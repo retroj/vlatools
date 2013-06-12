@@ -7,6 +7,7 @@ exec csi -s $0 "$@"
 
 (use srfi-1
      srfi-13
+     args
      extras
      matchable
      ssax
@@ -15,7 +16,8 @@ exec csi -s $0 "$@"
      utils)
 
 
-(let* ((svg (with-input-from-file "hello-world.svg"
+(define (svgpath->vla filename)
+(let* ((svg (with-input-from-file filename
               (lambda () (ssax:xml->sxml (current-input-port) '()))))
        (paths (map
                (lambda (p)
@@ -72,4 +74,15 @@ exec csi -s $0 "$@"
      (set! y 0)
      (set! curve-coords 0)
      (apply translate-path path))
-   paths))
+   paths)))
+
+(define opts
+  (list))
+
+(receive (options operands)
+    (args:parse (command-line-arguments) opts)
+  (when (null? operands)
+    (abort "Please supply a filename for svg input"))
+  (when (> (length operands) 1)
+    (abort "Too many operands"))
+  (svgpath->vla (first operands)))
