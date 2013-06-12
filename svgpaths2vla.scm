@@ -16,7 +16,7 @@ exec csi -s $0 "$@"
      utils)
 
 
-(define (svgpath->vla filename)
+(define (svgpaths->vla filename)
   (let* ((svg (with-input-from-file filename
                 (lambda () (ssax:xml->sxml (current-input-port) '()))))
          (paths (map
@@ -85,4 +85,4 @@ exec csi -s $0 "$@"
     (abort "Please supply a filename for svg input"))
   (when (> (length operands) 1)
     (abort "Too many operands"))
-  (svgpath->vla (first operands)))
+  (svgpaths->vla (first operands)))
