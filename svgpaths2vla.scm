@@ -10,23 +10,27 @@ exec csi -s $0 "$@"
      args
      extras
      matchable
+     (only ports with-output-to-port)
      ssax
      sxpath
      txpath
      utils)
 
+(define (read-svg filename)
+  (with-input-from-file filename
+    (lambda () (ssax:xml->sxml (current-input-port) '()))))
 
-(define (svgpaths->vla filename)
-  (let* ((svg (with-input-from-file filename
-                (lambda () (ssax:xml->sxml (current-input-port) '()))))
-         (paths (map
-                 (lambda (p)
-                   (map
-                    (lambda (s) (with-input-from-string s read))
-                    (string-tokenize
-                     (second p)
-                     (char-set-delete char-set:graphic #\,))))
-                 ((sxpath '(// http://www.w3.org/2000/svg:path @ d)) svg)))
+(define (svg-break-path str)
+  (map
+   (lambda (s) (with-input-from-string s read))
+   (string-tokenize
+    str (char-set-delete char-set:graphic #\,))))
+
+(define (svgpaths->vla sxml)
+  (let* ((paths (map
+                 svg-break-path
+                 ((sxpath '(// http://www.w3.org/2000/svg:path @ d "text()"))
+                  sxml)))
          (x 0)
          (y 0)
          (mode 'line)
@@ -79,10 +83,16 @@ exec csi -s $0 "$@"
 (define opts
   (list))
 
+(define (terminate message #!optional (result 1))
+  (with-output-to-port (current-error-port)
+    (lambda ()
+      (print message)
+      (exit result))))
+
 (receive (options operands)
     (args:parse (command-line-arguments) opts)
   (when (null? operands)
-    (abort "Please supply a filename for svg input"))
+    (terminate "Please supply a filename for svg input"))
   (when (> (length operands) 1)
-    (abort "Too many operands"))
-  (svgpaths->vla (first operands)))
+    (terminate "Too many operands"))
+  (svgpaths->vla (read-svg (first operands))))
