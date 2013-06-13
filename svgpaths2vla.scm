@@ -13,7 +13,6 @@ exec csi -s $0 "$@"
      (only ports with-output-to-port)
      ssax
      sxpath
-     txpath
      utils)
 
 (define header-file (make-parameter #f))
