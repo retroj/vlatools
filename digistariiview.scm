@@ -7,9 +7,9 @@ exec csi -s $0 "$@"
 
 (use srfi-1
      srfi-13
+     doodle
      extras
-     matchable
-     doodle)
+     matchable)
 
 (define last-x 0)
 (define last-y 0)
