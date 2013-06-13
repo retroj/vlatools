@@ -46,6 +46,8 @@ exec csi -s $0 "$@"
       (match e
        (('key 'pressed #\esc)
         (exit #t))
+       (('key 'pressed #\q)
+        (exit #t))
        (else (void))))
     events)))
 
