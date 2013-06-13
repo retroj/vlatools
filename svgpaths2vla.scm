@@ -36,7 +36,7 @@ exec csi -s $0 "$@"
         (y 0)
         (mode 'line)
         (curve-coords 0))
-    (lambda (path)
+    (lambda (path callback)
       (set! x 0)
       (set! y 0)
       (set! curve-coords 0)
@@ -53,7 +53,7 @@ exec csi -s $0 "$@"
           (set! x (+ x dx))
           (set! y (+ y dy))
           (set! mode 'line)
-          (printf "P ~A ~A 0.0~%" x y)
+          (callback 'point x y)
           (apply the-loop more))
          (('l . more)
           (set! mode 'line)
@@ -66,24 +66,29 @@ exec csi -s $0 "$@"
            ((line-mode?)
             (set! x (+ x dx))
             (set! y (+ y dy))
-            (printf "L ~A ~A 1.0~%" x y))
+            (callback 'line x y))
            ((curve-mode?)
             (set! curve-coords (+ 1 curve-coords))
             (when (= 3 curve-coords)
               (set! curve-coords 0)
               (set! x (+ x dx))
               (set! y (+ y dy))
-              (printf "L ~A ~A 1.0~%" x y))))
+              (callback 'line x y))))
           (apply the-loop more))
          (_ #t)))
 
       (apply the-loop path))))
 
+(define (vla-printer type x y)
+  (case type
+   ((point) (printf "P ~A ~A 0.0~%" x y))
+   ((line) (printf "L ~A ~A 1.0~%" x y))))
+
 (define (svgpaths->vla svg-sxml)
   (when (header-file)
     (print* (read-all (header-file))))
   (for-each
-   svgpath->vla
+   (lambda (path) (svgpath->vla path vla-printer))
    (map svg-break-path
         ((sxpath '(// "svg:path" @ d "text()") xml-namespaces)
          svg-sxml))))
