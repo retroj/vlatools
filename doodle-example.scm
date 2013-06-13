@@ -11,32 +11,31 @@ exec csi -s $0 "$@"
      matchable
      doodle)
 
-(define *paint* #f)
-
-(define red '(1 0 0 0.3))
-
 (define last-x 0)
 (define last-y 0)
 
-(define (draw-vectors cmd x y intensity . more)
-  (let ((y (- y 500)))
+(define (draw-vectors cmd x y intensity)
+  (let ((x (* (+ 10 x) 10))
+        (y (* (+ 10 y) 10)))
     (case cmd
       ((P) (set! last-x x) (set! last-y y))
       ((L)
        (draw-line last-x last-y x y color: solid-black)
-       (set! last-x x) (set! last-y y))))
-  (unless (null? more)
-    (apply draw-vectors more)))
+       (set! last-x x) (set! last-y y)))))
 
 (define (draw-hello-world)
-  (let* ((cmds (read-file "myvectors.txt")))
-    (apply draw-vectors cmds)))
-
+  (for-each
+   (lambda (line)
+     (cond
+      ((string-prefix-ci? "set" line) #f)
+      (else
+       (with-input-from-string line
+         (lambda () (draw-vectors (read) (read) (read) (read)))))))
+   (read-lines "foo.vla")))
 
 (world-inits
  (lambda ()
    (clear-screen)
-   (set-font! "Vollkorn" 18 red)
    (draw-hello-world)))
 
 (world-changes
@@ -49,5 +48,5 @@ exec csi -s $0 "$@"
        (else (void))))
     events)))
 
-(new-doodle width: 1000 height: 700 title: "Doodle paint" background: solid-white)
+(new-doodle width: 640 height: 480 title: "Doodle paint" background: solid-white)
 (run-event-loop)
