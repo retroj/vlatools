@@ -1,0 +1,10 @@
+set comment hello-world.vla by John J Foerch
+set author John J Foerch
+set site RBC Planetarium
+set filetype new
+set coordsys left ;meters
+set defaultdraw obstinate
+set filecontent lines
+set parametric parametric
+set depthcue 0
+set library_id unknown
