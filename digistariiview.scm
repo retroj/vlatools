@@ -11,17 +11,18 @@ exec csi -s $0 "$@"
      extras
      matchable)
 
-(define last-x 0)
-(define last-y 0)
 
-(define (draw-vectors cmd x y intensity)
-  (let ((x (* (+ 10 x) 10))
-        (y (* (+ 10 y) 10)))
-    (case cmd
-      ((P) (set! last-x x) (set! last-y y))
-      ((L)
-       (draw-line last-x last-y x y color: solid-black)
-       (set! last-x x) (set! last-y y)))))
+(define draw-vectors
+  (let ((last-x 0)
+        (lasy-y 0))
+    (lambda (cmd x y intensity)
+      (let ((x (* (+ 10 x) 10))
+            (y (* (+ 10 y) 10)))
+        (case cmd
+          ((P) (set! last-x x) (set! last-y y))
+          ((L)
+           (draw-line last-x last-y x y color: solid-white)
+           (set! last-x x) (set! last-y y)))))))
 
 (define (draw-hello-world)
   (for-each
