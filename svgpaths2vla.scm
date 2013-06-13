@@ -15,6 +15,9 @@ exec csi -s $0 "$@"
      sxpath
      utils)
 
+(define (read-from-string s)
+  (with-input-from-string s read))
+
 (define header-file (make-parameter #f))
 
 (define xml-namespaces
@@ -26,7 +29,7 @@ exec csi -s $0 "$@"
 
 (define (svg-break-path str)
   (map
-   (lambda (s) (with-input-from-string s read))
+   read-from-string
    (string-tokenize
     str (char-set-delete char-set:graphic #\,))))
 
