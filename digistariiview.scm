@@ -7,10 +7,12 @@ exec csi -s $0 "$@"
 
 (use srfi-1
      srfi-13
+     args
      doodle
      extras
      matchable)
 
+(define the-file (make-parameter #f))
 
 (define draw-vectors
   (let ((last-x 0)
@@ -32,7 +34,7 @@ exec csi -s $0 "$@"
       (else
        (with-input-from-string line
          (lambda () (draw-vectors (read) (read) (read) (read)))))))
-   (read-lines "foo.vla")))
+   (read-lines (the-file))))
 
 (world-inits
  (lambda ()
@@ -51,5 +53,25 @@ exec csi -s $0 "$@"
        (else (void))))
     events)))
 
-(new-doodle width: 640 height: 480 title: "Doodle paint" background: solid-white)
-(run-event-loop)
+(define (terminate message #!optional (result 1))
+  (with-output-to-port (current-error-port)
+    (lambda ()
+      (print message)
+      (exit result))))
+
+(define opts
+  (list
+   #;(args:make-option (fit) (required: "GEOMETRY")
+                     "fit svg paths into GEOMETRY WxH[+X+Y]"
+     (set-fit-geometry! arg))
+   ))
+
+(receive (options operands)
+    (args:parse (command-line-arguments) opts)
+  (when (null? operands)
+    (terminate "Please supply a filename"))
+  (when (> (length operands) 1)
+    (terminate "Too many operands"))
+  (the-file (first operands))
+  (new-doodle width: 640 height: 480 title: "DigistarIIView" background: solid-black)
+  (run-event-loop))
