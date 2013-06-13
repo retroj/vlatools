@@ -47,20 +47,20 @@ exec csi -s $0 "$@"
       (define (line-mode?)
         (eq? mode 'line))
 
-      (define translate-path
+      (define the-loop
         (match-lambda*
          (('m dx dy . more)
           (set! x (+ x dx))
           (set! y (+ y dy))
           (set! mode 'line)
           (printf "P ~A ~A 0.0~%" x y)
-          (apply translate-path more))
+          (apply the-loop more))
          (('l . more)
           (set! mode 'line)
-          (apply translate-path more))
+          (apply the-loop more))
          (('c . more)
           (set! mode 'curve)
-          (apply translate-path more))
+          (apply the-loop more))
          ((dx dy . more)
           (cond
            ((line-mode?)
@@ -74,10 +74,10 @@ exec csi -s $0 "$@"
               (set! x (+ x dx))
               (set! y (+ y dy))
               (printf "L ~A ~A 1.0~%" x y))))
-          (apply translate-path more))
+          (apply the-loop more))
          (_ #t)))
 
-      (apply translate-path path))))
+      (apply the-loop path))))
 
 (define (svgpaths->vla svg-sxml)
   (when (header-file)
