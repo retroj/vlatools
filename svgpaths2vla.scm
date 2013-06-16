@@ -80,7 +80,7 @@ exec csi -s $0 "$@"
           (set! x (+ x dx))
           (set! y (+ y dy))
           (set! mode 'line)
-          (callback 'point x y)
+          (callback 'position x y)
           (apply the-loop more))
          (('l . more)
           (set! mode 'line)
@@ -133,8 +133,8 @@ exec csi -s $0 "$@"
       (let ((x (adjust-x x))
             (y (adjust-y y)))
         (case type
-          ((point) (printf "P ~A ~A 0.0~%" x y))
-          ((line) (printf "L ~A ~A 1.0~%" x y)))))
+          ((position) (printf "P ~A ~A 0.0 0.0~%" x y))
+          ((line) (printf "L ~A ~A 0.0 1.0~%" x y)))))
 
     ;; if fit-geometry has been set, then we must calculate the extents of
     ;; the figure.
