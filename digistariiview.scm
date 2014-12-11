@@ -17,9 +17,9 @@ exec csi -s $0 "$@"
 (define draw-vectors
   (let ((last-x 0)
         (lasy-y 0))
-    (lambda (cmd x y intensity)
-      (let ((x (* (+ 10 x) 10))
-            (y (* (+ 10 y) 10)))
+    (lambda (cmd x y z intensity)
+      (let ((x (* (+ .5 x) 1000))
+            (y (* (+ .5 y) 1000)))
         (case cmd
           ((P) (set! last-x x) (set! last-y y))
           ((L)
@@ -30,10 +30,11 @@ exec csi -s $0 "$@"
   (for-each
    (lambda (line)
      (cond
+      ((string-prefix? ";" line) #f)
       ((string-prefix-ci? "set" line) #f)
       (else
        (with-input-from-string line
-         (lambda () (draw-vectors (read) (read) (read) (read)))))))
+         (lambda () (draw-vectors (read) (read) (read) (read) (read)))))))
    (read-lines (the-file))))
 
 (world-inits
