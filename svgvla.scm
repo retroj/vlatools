@@ -9,10 +9,12 @@ exec csi -s $0 "$@"
      srfi-13
      args
      extras
+     list-utils
      matchable
      (only ports with-output-to-port)
      regex
      ssax
+     sxml-transforms
      sxpath
      utils)
 
@@ -52,104 +54,120 @@ exec csi -s $0 "$@"
   (with-input-from-file filename
     (lambda () (ssax:xml->sxml (current-input-port) '()))))
 
+(define (svg-path->points pathspec)
+  (define (add-point x y path)
+    (cons `(,x ,y) path))
+  (filter
+   (lambda (x) (not (null? x)))
+   (let loop ((x 0)
+              (y 0)
+              (curpath '())
+              (outpaths '())
+              (pathspec pathspec))
+     (match pathspec
+       (() (reverse! (cons curpath outpaths))) ;; done!
+
+       (('M x y . more) ;; absolute moveto
+        (loop x y `((,x ,y)) (cons (reverse! curpath) outpaths) more))
+
+       (('m dx dy . more) ;; relative moveto
+        (let ((x (+ x dx)) (y (+ y dy)))
+          (loop x y `((,x ,y)) (cons (reverse! curpath) outpaths) more)))
+
+       (('L x y . more) ;; absolute lineto
+        (loop x y (add-point x y curpath) outpaths more))
+
+       (('l dx dy . more) ;; relative lineto
+        (let ((x (+ x dx)) (y (+ y dy)))
+          (loop x y (add-point x y curpath) outpaths more)))
+
+       (('H x . more) ;; absolute horizontal lineto
+        (loop x y (add-point x y curpath) outpaths more))
+
+       (('h dx . more) ;; relative horizontal lineto
+        (let ((x (+ x dx)))
+          (loop x y (add-point x y curpath) outpaths more)))
+
+       (('V y . more) ;; absolute vertical lineto
+        (loop x y (add-point x y curpath) outpaths more))
+
+       (('v dy . more) ;; relative vertical lineto
+        (let ((y (+ y dy)))
+          (loop x y (add-point x y curpath) outpaths more)))
+
+       (('c x1 y1 x2 y2 dx dy . more) ;; relative curveto
+        ;; cheat and just do a line to dx,dy
+        (let ((x (+ x dx)) (y (+ y dy)))
+          (loop x y (add-point x y curpath) outpaths more)))
+
+       (('Z . more) ;; close subpath
+        (let* ((pt (last curpath))
+               (x (first pt))
+               (y (second pt)))
+          (loop x y (add-point x y curpath) outpaths more)))
+
+       (('z . more) ;; close subpath
+        (let* ((pt (last curpath))
+               (x (first pt))
+               (y (second pt)))
+          (loop x y (add-point x y curpath) outpaths more)))
+
+       (more
+        (terminate (sprintf "error: svg-path->points failed to parse:~%  ~S~%" more)))))))
+
 (define (svg-break-path str)
-  (map
-   read-from-string
-   (string-tokenize
-    str (char-set-delete char-set:graphic #\,))))
+  (map read-from-string
+       (string-split-fields "[a-zA-Z]|(-?[.0-9]+)" str)))
 
-(define svgpath->vla
-  (let ((x 0)
-        (y 0)
-        (mode 'line)
-        (curve-coords 0))
-    (lambda (path callback)
-      (set! x 0)
-      (set! y 0)
-      (set! curve-coords 0)
+(define (svg-break-polygon-points str)
+  (section
+   (map read-from-string (string-split str " \n\r\t,"))
+   2))
 
-      (define (curve-mode?)
-        (eq? mode 'curve))
+(define (svg-sxml->shapes sxml)
+  (let ((shapes '()))
+    (define (shape-add! data)
+      (set! shapes (cons data shapes)))
 
-      (define (line-mode?)
-        (eq? mode 'line))
+    (define svg-rules
+      `((*default* . ,(lambda (tag body) body))
+        (*text* . ,(lambda (tag body) #f))
+        (http://www.w3.org/2000/svg:path
+         *preorder* . ,(match-lambda*
+                        ((tag (('@ . attrs) . body))
+                         (and-let* ((r (assoc 'd attrs)))
+                           (for-each
+                            shape-add!
+                            (svg-path->points
+                             (svg-break-path (cadr r))))))
+                        (x #f)))
+        (http://www.w3.org/2000/svg:polygon
+         *preorder* . ,(match-lambda*
+                        ((tag (('@ . attrs) . body))
+                         (and-let* ((r (assoc 'points attrs))
+                                    (points (svg-break-polygon-points (cadr r))))
+                           (shape-add! (cons (last points) points))))
+                        (x #f)))))
 
-      (define the-loop
-        (match-lambda*
-         (('m dx dy . more)
-          (set! x (+ x dx))
-          (set! y (+ y dy))
-          (set! mode 'line)
-          (callback 'position x y)
-          (apply the-loop more))
-         (('l . more)
-          (set! mode 'line)
-          (apply the-loop more))
-         (('c . more)
-          (set! mode 'curve)
-          (apply the-loop more))
-         ((dx dy . more)
-          (cond
-           ((line-mode?)
-            (set! x (+ x dx))
-            (set! y (+ y dy))
-            (callback 'line x y))
-           ((curve-mode?)
-            (set! curve-coords (+ 1 curve-coords))
-            (when (= 3 curve-coords)
-              (set! curve-coords 0)
-              (set! x (+ x dx))
-              (set! y (+ y dy))
-              (callback 'line x y))))
-          (apply the-loop more))
-         (_ #t)))
+    (define (find-shapes sxml)
+      (pre-post-order* sxml svg-rules) ;;traverse tree for side-effect, throw away result
+      (set! shapes (reverse! shapes))
+      shapes)
 
-      (apply the-loop path))))
+    (find-shapes sxml)))
 
-(define (svgpaths->vla svg-sxml)
-  (let ((paths (map svg-break-path
-                    ((sxpath '(// "svg:path" @ d "text()") xml-namespaces)
-                     svg-sxml)))
-        (minx #f) (miny #f) (maxx #f) (maxy #f)
-        (extents-wid #f) (extents-hei #f))
-
-    (define (extents-calculator _ x y)
-      (set! minx (min x (or minx x)))
-      (set! miny (min y (or miny y)))
-      (set! maxx (max x (or maxx x)))
-      (set! maxy (max y (or maxy y))))
-
-    (define (adjust-x x)
-      (+ (* (- x (if (fit-ofx) minx 0))
-            (if extents-wid (/ (fit-wid) extents-wid) 1))
-         (or (fit-ofx) 0)))
-
-    (define (adjust-y y)
-      (+ (* (- y (if (fit-ofy) miny 0))
-            (if extents-hei (/ (fit-hei) extents-hei) 1))
-         (or (fit-ofy) 0)))
-
-    (define (vla-printer type x y)
-      (let ((x (adjust-x x))
-            (y (adjust-y y)))
-        (case type
-          ((position) (printf "P ~A ~A 0.0 0.0~%" x y))
-          ((line) (printf "L ~A ~A 0.0 1.0~%" x y)))))
-
-    ;; if fit-geometry has been set, then we must calculate the extents of
-    ;; the figure.
-    (when (fit-wid)
-      (for-each
-       (lambda (path) (svgpath->vla path extents-calculator))
-       paths)
-      (set! extents-wid (- maxx minx))
-      (set! extents-hei (- maxy miny)))
-
-    (when (header-file)
-      (print* (read-all (header-file))))
-    (for-each
-     (lambda (path) (svgpath->vla path vla-printer))
-     paths)))
+(define (shapes->vla shapes)
+  (define print-point
+    (match-lambda*
+     (((x y) command)
+      (printf "~A ~A ~A 0.0 1.0~%" command x y))))
+  (for-each
+   (lambda (shape)
+     (print-point (car shape) 'P)
+     (for-each
+      (lambda (point) (print-point point 'L))
+      (cdr shape)))
+   shapes))
 
 (define (terminate message #!optional (result 1))
   (with-output-to-port (current-error-port)
@@ -172,4 +190,6 @@ exec csi -s $0 "$@"
     (terminate "Please supply a filename for svg input"))
   (when (> (length operands) 1)
     (terminate "Too many operands"))
-  (svgpaths->vla (read-svg (first operands))))
+  (shapes->vla
+   (svg-sxml->shapes
+    (read-svg (first operands)))))
