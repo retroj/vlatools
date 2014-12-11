@@ -21,6 +21,8 @@ exec csi -s $0 "$@"
 (define (read-from-string s)
   (with-input-from-string s read))
 
+(define center-drawing (make-parameter #f))
+
 (define (parse-geometry spec)
   (and-let* ((m (string-match
                  '(: ($ (+ num)) "x" ($ (+ num))
@@ -169,6 +171,40 @@ exec csi -s $0 "$@"
       (cdr shape)))
    shapes))
 
+(define (apply-transformations shapes)
+  (match-let
+      (((xmin xmax ymin ymax)
+        (fold
+         (match-lambda*
+          ((shape (xmin xmax ymin ymax))
+           (receive (xs ys)
+               (unzip-alist shape)
+             (let ((ys (map car ys)))
+               (list (apply min xmin xs)
+                     (apply max xmax xs)
+                     (apply min ymin ys)
+                     (apply max ymax ys))))))
+         (match (caar shapes) ((x y) (list x x y y)))
+         shapes)))
+    (let ((transformations
+           (list
+            (list (center-drawing)
+                  (lambda (shapes)
+                    (let ((hoff (* 0.5 (+ xmin xmax)))
+                          (voff (* 0.5 (+ ymin ymax))))
+                      (map (lambda (shape)
+                             (map (match-lambda ((x y) (list (- x hoff) (- y voff))))
+                                  shape))
+                           shapes)))))))
+      (fold
+       (match-lambda*
+        (((test consequent) shapes)
+         (if test
+             (consequent shapes)
+             shapes)))
+       shapes
+       transformations))))
+
 (define (terminate message #!optional (result 1))
   (with-output-to-port (current-error-port)
     (lambda ()
@@ -177,6 +213,9 @@ exec csi -s $0 "$@"
 
 (define opts
   (list
+   (args:make-option (center) optional:
+                     "center the drawing at the coordinate system origin"
+     (center-drawing #t))
    (args:make-option (fit) (required: "GEOMETRY")
                      "fit svg paths into GEOMETRY WxH[+X+Y]"
      (set-fit-geometry! arg))
@@ -191,5 +230,6 @@ exec csi -s $0 "$@"
   (when (> (length operands) 1)
     (terminate "Too many operands"))
   (shapes->vla
-   (svg-sxml->shapes
-    (read-svg (first operands)))))
+   (apply-transformations
+    (svg-sxml->shapes
+     (read-svg (first operands))))))
