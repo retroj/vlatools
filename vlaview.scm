@@ -74,5 +74,5 @@ exec csi -s $0 "$@"
   (when (> (length operands) 1)
     (terminate "Too many operands"))
   (the-file (first operands))
-  (new-doodle width: 640 height: 480 title: "DigistarIIView" background: solid-black)
+  (new-doodle width: 640 height: 480 title: "vlaview" background: solid-black)
   (run-event-loop))
