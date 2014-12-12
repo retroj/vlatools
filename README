@@ -1,0 +1,18 @@
+
+* vlatools
+
+This is a collection of utilities for working with the VLA file format.
+VLA is a simple model format supported by the Digistar planetarium
+system.  All of the programs in this collection are licensed with a BSD
+style license.
+
+Manuals for these tools may or may not be found in the 'doc/' directory of
+the source code.  Have fun and may the source be with you.
+
+** svgvla
+
+Svgvla is a tool for converting a small subset of SVG to VLA.
+
+** vlaview
+
+Vlaview is a tool for viewing VLA models in an SDL display.
