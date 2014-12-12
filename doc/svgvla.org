@@ -1,0 +1,27 @@
+
+Svgvla is a tool that converts a subset of SVG format to VLA.  It is
+written in CHICKEN Scheme and depends on a number of eggs that can be
+installed with the chicken-install tool.  For more information on CHICKEN
+Scheme, see http://call-cc.org/.
+
+* Supported elements
+** svg:polygon
+** svg:path
+
+All of the straight line primitives of svg:path are supported.  The 'c'
+curve command is cheated by simply drawing a straight line from source to
+destination.  None of the other curve commands are supported yet.
+
+* Command-line
+
+Command-line invocation is done like this:
+
+    $ svgvla [options] <svgfile>
+
+If all goes well, the VLA output is written to stdout.
+
+** options
+*** --center
+
+The --center option causes svgvla to center the drawing about the
+coordinate system origin.
