@@ -89,8 +89,11 @@
      (match pathspec
        (() (reverse! (cons (reverse! curpath) outpaths))) ;; done!
 
-       (('M x y . more) ;; absolute moveto
-        (loop x y `((,x ,y)) (cons (reverse! curpath) outpaths) more))
+       (('M . more) ;; absolute moveto
+        (loop x y `() (cons (reverse! curpath) outpaths)
+              (if (or (null? more) (symbol? (car more)))
+                  more
+                  (cons 'L more))))
 
        (('m . more) ;; relative moveto
         (loop x y `() (cons (reverse! curpath) outpaths)
@@ -99,7 +102,10 @@
                   (cons 'l more))))
 
        (('L x y . more) ;; absolute lineto
-        (loop x y (add-point x y curpath) outpaths more))
+        (loop x y (add-point x y curpath) outpaths
+              (if (or (null? more) (symbol? (car more)))
+                  more
+                  (cons 'L more))))
 
        (('l dx dy . more) ;; relative lineto
         (let ((x (+ x dx)) (y (+ y dy)))
