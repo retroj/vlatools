@@ -41,7 +41,6 @@ exec csi -s $0 "$@"
      regex
      ssax
      sxml-transforms
-     sxpath
      utils)
 
 (define (read-from-string s)
