@@ -131,7 +131,10 @@
        (('c x1 y1 x2 y2 dx dy . more) ;; relative curveto
         ;; cheat and just do a line to dx,dy
         (let ((x (+ x dx)) (y (+ y dy)))
-          (loop x y (add-point x y curpath) outpaths more)))
+          (loop x y (add-point x y curpath) outpaths
+                (if (or (null? more) (symbol? (car more)))
+                    more
+                    (cons 'c more)))))
 
        (('Z . more) ;; close subpath
         (let* ((pt (last curpath))

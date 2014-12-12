@@ -15,4 +15,10 @@
 (test '(((200 1000) (-5 -25) (-2 -50)))
       (svg-path->points '(M 200 1000 -5 -25 -2 -50)))
 
+;;XXX: this test assumes our cheat implementation of the 'c command
+(test `(((6 -5) (13 -22)))
+      (svg-path->points
+       (svg-break-path
+        "c 0,0 4,-4 6,-5 2,-1 7,-17 7,-17")))
+
 (test-exit)
