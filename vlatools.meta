@@ -1,0 +1,16 @@
+;; -*- scheme -*-
+
+((license "BSD")
+ (category tools)
+ (synopsis "utilities for working with Digistar VLA models")
+ (author "John J. Foerch")
+ (depends args
+          doodle
+          inclub
+          list-utils
+          matchable
+          ports
+          regex
+          ssax
+          sxml-transforms)
+ (test-depends test inclub))
