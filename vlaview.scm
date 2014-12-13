@@ -36,7 +36,8 @@ exec csi -s $0 "$@"
      args
      doodle
      extras
-     matchable)
+     matchable
+     (only ports with-input-from-string))
 
 (define the-file (make-parameter #f))
 
