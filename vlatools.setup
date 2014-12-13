@@ -1,0 +1,13 @@
+;; -*- scheme -*-
+
+(compile svgvla.scm)
+
+(compile vlaview.scm)
+
+(install-program 'svgvla
+  '("svgvla")
+  '((version "0.1")))
+
+(install-program 'vlaview
+  '("vlaview")
+  '((version "0.1")))
