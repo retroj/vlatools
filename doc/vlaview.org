@@ -1,0 +1,5 @@
+
+Vlaview is a quick hack to help with previewing the output of svgvla.  It
+is not yet a fully implemented viewer for the vla format.  It will usually
+be necessary to modify the source in order to preview any particular VLA
+because the viewport is not automatically scaled.  Patches welcome.
