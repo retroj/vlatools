@@ -79,6 +79,10 @@
 (define (svg-path->points pathspec)
   (define (add-point x y path)
     (cons `(,x ,y) path))
+  (define (apply-default-command pathspec default-command)
+    (if (or (null? pathspec) (symbol? (car pathspec)))
+        pathspec
+        (cons default-command pathspec)))
   (filter
    (lambda (x) (not (null? x)))
    (let loop ((x 0)
@@ -91,28 +95,20 @@
 
        (('M . more) ;; absolute moveto
         (loop x y `() (cons (reverse! curpath) outpaths)
-              (if (or (null? more) (symbol? (car more)))
-                  more
-                  (cons 'L more))))
+              (apply-default-command more 'L)))
 
        (('m . more) ;; relative moveto
         (loop x y `() (cons (reverse! curpath) outpaths)
-              (if (or (null? more) (symbol? (car more)))
-                  more
-                  (cons 'l more))))
+              (apply-default-command more 'l)))
 
        (('L x y . more) ;; absolute lineto
         (loop x y (add-point x y curpath) outpaths
-              (if (or (null? more) (symbol? (car more)))
-                  more
-                  (cons 'L more))))
+              (apply-default-command more 'L)))
 
        (('l dx dy . more) ;; relative lineto
         (let ((x (+ x dx)) (y (+ y dy)))
           (loop x y (add-point x y curpath) outpaths
-                (if (or (null? more) (symbol? (car more)))
-                    more
-                    (cons 'l more)))))
+                (apply-default-command more 'l))))
 
        (('H x . more) ;; absolute horizontal lineto
         (loop x y (add-point x y curpath) outpaths more))
@@ -132,9 +128,7 @@
         ;; cheat and just do a line to dx,dy
         (let ((x (+ x dx)) (y (+ y dy)))
           (loop x y (add-point x y curpath) outpaths
-                (if (or (null? more) (symbol? (car more)))
-                    more
-                    (cons 'c more)))))
+                (apply-default-command more 'c))))
 
        (('Z . more) ;; close subpath
         (let* ((pt (last curpath))
