@@ -154,6 +154,13 @@
    (map read-from-string (string-split str " \n\r\t,"))
    2))
 
+(define (svg-rect->points x y width height)
+  (list (list x y)
+        (list (+ x width) y)
+        (list (+ x width) (+ y height))
+        (list x (+ y height))
+        (list x y)))
+
 (define (svg-sxml->shapes sxml)
   (let ((shapes '()))
     (define (shape-add! data)
@@ -177,6 +184,17 @@
                          (and-let* ((r (assoc 'points attrs))
                                     (points (svg-break-polygon-points (cadr r))))
                            (shape-add! (cons (last points) points))))
+                        (x #f)))
+        (http://www.w3.org/2000/svg:rect
+         *preorder* . ,(match-lambda*
+                        ((tag (('@ . attrs) . body))
+                         (and-let* ((x (assoc 'x attrs))
+                                    (y (assoc 'y attrs))
+                                    (width (assoc 'width attrs))
+                                    (height (assoc 'height attrs)))
+                           (shape-add! (apply svg-rect->points
+                                              (map (compose string->number cadr)
+                                                   (list x y width height))))))
                         (x #f)))))
 
     (define (find-shapes sxml)
