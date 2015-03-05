@@ -18,7 +18,14 @@
 import bpy
 import operator
 
+def addprop (props, spec):
+    field = spec[1].upper()
+    if field == 'COORDSYS':
+        props[field] = spec[2].upper() ## LEFT (m) or RIGHT (ly)
+    return props
+
 def readvla (filepath, name):
+    props = {'COORDSYS': 'LEFT'}
     f = open(filepath, "r")
     verts = {}
     verti = 0
@@ -30,7 +37,9 @@ def readvla (filepath, name):
         line_split = line.split()
         if len(line_split) == 0:
             continue
-        kw = line_split[0]
+        kw = line_split[0].upper()
+        if kw == 'SET':
+            props = addprop(props, line_split[1:])
         if kw == 'P':
             v = map(float, line_split[1:4])
             v = map(hack, v) ##XXX: hack for a certain file
