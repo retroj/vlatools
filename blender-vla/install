@@ -1,0 +1,3 @@
+#!/bin/bash -e
+sudo cp -r io_mesh_vla /usr/share/blender/scripts/addons/
+sudo chmod -R o+rX /usr/share/blender/scripts/addons/io_mesh_vla
