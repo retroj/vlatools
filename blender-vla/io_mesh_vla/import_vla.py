@@ -19,7 +19,7 @@ import bpy
 import operator
 
 def readvla (filepath, name):
-    f = open(filepath, "rb")
+    f = open(filepath, "r")
     verts = {}
     verti = 0
     edges = []
@@ -31,7 +31,7 @@ def readvla (filepath, name):
         if len(line_split) == 0:
             continue
         kw = line_split[0]
-        if kw == b'P':
+        if kw == 'P':
             v = map(float, line_split[1:4])
             v = map(hack, v) ##XXX: hack for a certain file
             v = tuple(v)
@@ -39,7 +39,7 @@ def readvla (filepath, name):
                 verts[v] = verti
                 verti += 1
             p = verts[v]
-        elif kw == b'L':
+        elif kw == 'L':
             v = map(float, line_split[1:4])
             v = map(hack, v) ##XXX: hack for a certain file
             v = tuple(v)
