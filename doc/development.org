@@ -1,0 +1,11 @@
+
+* blender-vla
+** TODO option to scale the models down while reading
+   :LOGBOOK:  
+   - State -> "TODO"  [2015-03-05 Thu]
+   :END:      
+
+One commonly finds models which are in meters (coordsys left) but the
+coordinates are all very large because they were converted from files
+specified in lightyears.  We should at the very least have an option to
+divide out lightyears.  Then maybe an additional scale option after that?
