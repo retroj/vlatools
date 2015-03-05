@@ -1,3 +1,15 @@
 #!/bin/bash -e
+if [ "$1" != "-y" ]; then
+    echo
+    echo "This is not a general-purpose installation script for all"
+    echo "operating systems, just a quick hack for my Debian setup."
+    echo "Check the installation paths in the source and modify the"
+    echo "script if necessary for your system.  Pass '-y' to the"
+    echo "script to bypass this message."
+    echo
+    echo "No actions performed."
+    echo
+    exit
+fi
 sudo cp -r io_mesh_vla /usr/share/blender/scripts/addons/
 sudo chmod -R o+rX /usr/share/blender/scripts/addons/io_mesh_vla
