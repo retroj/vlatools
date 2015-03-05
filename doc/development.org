@@ -1,8 +1,9 @@
 
 * blender-vla
-** TODO option to scale the models down while reading
+** DONE option to scale the models down while reading
    :LOGBOOK:
    - State -> "TODO"  [2015-03-05 Thu]
+   - State -> "DONE"  [2015-03-05 Thu]
    :END:
 
 One commonly finds models which are in meters (coordsys left) but the

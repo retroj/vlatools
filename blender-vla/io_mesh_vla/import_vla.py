@@ -24,15 +24,19 @@ def addprop (props, spec):
         props[field] = spec[2].upper() ## LEFT (m) or RIGHT (ly)
     return props
 
-def readvla (filepath, name):
+def readvla (filepath, name, divide_ly=False, **keywords):
     props = {'COORDSYS': 'LEFT'}
     f = open(filepath, "r")
     verts = {}
     verti = 0
     edges = []
     p = False
-    def hack (x):
-        return x / 1e+16
+    def divide_out_lightyears (v):
+        return v / 9.4607304725808e15
+    def apply_scale (v):
+        if props['COORDSYS'] == 'LEFT' and divide_ly:
+            return map(divide_out_lightyears, v)
+        return v
     for line in f.readlines():
         line_split = line.split()
         if len(line_split) == 0:
@@ -42,16 +46,14 @@ def readvla (filepath, name):
             props = addprop(props, line_split[1:])
         if kw == 'P':
             v = map(float, line_split[1:4])
-            v = map(hack, v) ##XXX: hack for a certain file
-            v = tuple(v)
+            v = tuple(apply_scale(v))
             if v not in verts:
                 verts[v] = verti
                 verti += 1
             p = verts[v]
         elif kw == 'L':
             v = map(float, line_split[1:4])
-            v = map(hack, v) ##XXX: hack for a certain file
-            v = tuple(v)
+            v = tuple(apply_scale(v))
             if v not in verts:
                 verts[v] = verti
                 verti += 1
@@ -81,7 +83,7 @@ def addmesh (mesh, name):
         scene.objects.active = nobj
 
 
-def read (filepath):
+def read (filepath=False, **keywords):
     name = bpy.path.display_name_from_filepath(filepath)
-    mesh = readvla(filepath, name)
+    mesh = readvla(filepath, name, **keywords)
     addmesh(mesh, name)

@@ -38,9 +38,15 @@ class VLAImporter (bpy.types.Operator):
     filepath = StringProperty(subtype = "FILE_PATH")
     filter_glob = StringProperty(default = "*.vla", options={"HIDDEN"})
 
+    divide_ly = BoolProperty(
+        name="Divide Ly",
+        description="Divide out lightyears for very large models in meters",
+        default=False)
+
     def execute (self, context):
         from . import import_vla
-        import_vla.read(self.filepath)
+        keywords = self.as_keywords()
+        import_vla.read(**keywords)
         return {"FINISHED"}
 
     def invoke (self, context, event):
