@@ -1,5 +1,23 @@
 
 * blender-vla
+** DONE support coordsys left
+   :LOGBOOK:
+   - State -> "TODO"  [2015-03-06 Fri]
+   - State -> "DONE"  [2015-03-07 Sat]
+   :END:
+
+A coordsys left model needs attitude change 180 90 0, and the y axis
+inverted.
+
+It is not entirely clear what the correct transformation is, but I have
+settled on one through experiment that at least works when exporting to
+3ds or obj formats, though exported fbx models are rotated 180 degrees
+around the Z axis compared to what I expect.
+
+Export plugins generally have options for which axis is considered "up"
+and "forward", but as far as I can tell, Digistar does not respect these
+settings.
+
 ** DONE option to scale the models down while reading
    :LOGBOOK:
    - State -> "TODO"  [2015-03-05 Thu]

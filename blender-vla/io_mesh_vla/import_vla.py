@@ -24,18 +24,25 @@ def addprop (props, spec):
         props[field] = spec[2].upper() ## LEFT (m) or RIGHT (ly)
     return props
 
-def readvla (filepath, name, divide_ly=False, **keywords):
+def readvla (filepath, name,
+             divide_ly=False,
+             respect_coordsys=True,
+             **keywords):
     props = {'COORDSYS': 'LEFT'}
     f = open(filepath, "r")
     verts = {}
     verti = 0
     edges = []
     p = False
-    def divide_out_lightyears (v):
-        return v / 9.4607304725808e15
-    def apply_scale (v):
-        if props['COORDSYS'] == 'LEFT' and divide_ly:
-            return map(divide_out_lightyears, v)
+    def divide_out_lightyears (x):
+        return x / 9.4607304725808e15
+    def apply_optional_transformations (v):
+        if props['COORDSYS'] == 'LEFT':
+            if divide_ly:
+                v = map(divide_out_lightyears, v)
+            if respect_coordsys:
+                [x, y, z] = v
+                v = [x, z, y]
         return v
     for line in f.readlines():
         line_split = line.split()
@@ -46,14 +53,14 @@ def readvla (filepath, name, divide_ly=False, **keywords):
             props = addprop(props, line_split[1:])
         if kw == 'P':
             v = map(float, line_split[1:4])
-            v = tuple(apply_scale(v))
+            v = tuple(apply_optional_transformations(v))
             if v not in verts:
                 verts[v] = verti
                 verti += 1
             p = verts[v]
         elif kw == 'L':
             v = map(float, line_split[1:4])
-            v = tuple(apply_scale(v))
+            v = tuple(apply_optional_transformations(v))
             if v not in verts:
                 verts[v] = verti
                 verti += 1

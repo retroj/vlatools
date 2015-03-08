@@ -43,6 +43,11 @@ class VLAImporter (bpy.types.Operator):
         description="Divide out lightyears for very large models in meters",
         default=False)
 
+    respect_coordsys = BoolProperty(
+        name="Respect Coordsys",
+        description="Transform left-handed coordinates to right-handed coordinates",
+        default=True)
+
     def execute (self, context):
         from . import import_vla
         keywords = self.as_keywords()
