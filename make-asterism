@@ -52,7 +52,6 @@ exec csi -s "$0" "$@"
        (file-read-access? file)))
 
 (define (hyg-get-records pattern)
-  #;(print pattern)
   (with-input-from-pipe
    (string-join
     (map qs (list "grep" pattern hyg-catalog))
