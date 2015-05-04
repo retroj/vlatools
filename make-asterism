@@ -41,8 +41,10 @@ exec csi -s "$0" "$@"
 (define hyg-catalog "hygfull.csv")
 
 (define (abort-program msg #!optional (status 1))
-  (print msg)
-  (exit status))
+  (with-output-to-port (current-error-port)
+    (lambda ()
+      (printf "error: ~A~%" msg)
+      (exit status))))
 
 (define (file-readable? file)
   (and (file-exists? file)
@@ -106,11 +108,11 @@ exec csi -s "$0" "$@"
   (case-lambda
    ((input)
     (unless (file-readable? input)
-      (abort-program "error: input file not readable"))
+      (abort-program "input file not readable"))
     (unless (file-readable? hyg-catalog)
       (abort-program
        (string-append
-        "error: HYG database (./hygfull.csv) not found or not readable.\n"
+        "HYG database (./hygfull.csv) not found or not readable.\n"
         "  Obtain hygfull.csv from https://github.com/astronexus/HYG-Database/")))
     (let* ((def (with-input-from-file input read))
            (name (first def))
