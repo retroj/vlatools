@@ -13,6 +13,13 @@ the source code.  Have fun and may the source be with you.
 
 A VLA import plugin for Blender.
 
+** make-asterism (BSD)
+
+A program for producing Digistar stick figure drawings.  Note: this
+program does not yet produce VLA output, but another Digistar-specific
+format used for asterism stick figures.  A VLA output option is intended
+later.
+
 ** svgvla (BSD)
 
 Svgvla is a tool for converting a small subset of SVG to VLA.
