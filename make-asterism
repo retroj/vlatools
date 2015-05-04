@@ -31,12 +31,11 @@ exec csi -s "$0" "$@"
 
 (import chicken scheme)
 
-(use (srfi 1)
-     csv
-     csv-string
+(use (srfi 1 13)
      extras
      posix
-     regex)
+     regex
+     utils)
 
 (define hyg-catalog "hygfull.csv")
 
