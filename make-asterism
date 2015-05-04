@@ -1,0 +1,117 @@
+#!/bin/sh
+#| -*- scheme -*-
+exec csi -s "$0" "$@"
+|#
+
+;; Copyright 2014 John J Foerch. All rights reserved.
+;;
+;; Redistribution and use in source and binary forms, with or without
+;; modification, are permitted provided that the following conditions are
+;; met:
+;;
+;;    1. Redistributions of source code must retain the above copyright
+;;       notice, this list of conditions and the following disclaimer.
+;;
+;;    2. Redistributions in binary form must reproduce the above copyright
+;;       notice, this list of conditions and the following disclaimer in
+;;       the documentation and/or other materials provided with the
+;;       distribution.
+;;
+;; THIS SOFTWARE IS PROVIDED BY JOHN J FOERCH ''AS IS'' AND ANY EXPRESS OR
+;; IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+;; WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+;; DISCLAIMED. IN NO EVENT SHALL JOHN J FOERCH OR CONTRIBUTORS BE LIABLE
+;; FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+;; CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+;; SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+;; BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+;; WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+;; OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+;; ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+(import chicken scheme)
+
+(use (srfi 1)
+     csv
+     csv-string
+     extras
+     posix
+     regex)
+
+(define hyg-catalog "hygfull.csv")
+
+(define (hyg-get-records pattern)
+  #;(print pattern)
+  (with-input-from-pipe
+   (string-join
+    (map qs (list "grep" pattern hyg-catalog))
+    " ")
+   read-lines))
+
+(define (hyg-get-hipparcos pattern)
+  (let ((recs (hyg-get-records pattern)))
+    (when (null? recs)
+      (printf "failed to match: ~S~%" pattern))
+    (and-let* ((m (string-match '(: (+ (~ #\,)) #\,
+				    ($ (* (~ #\,)))
+				    (* any))
+				(first recs)))
+	       (hip (list-ref m 1)))
+      (string->number hip))))
+
+(define (star-hipparcos hip/flamsteed/bayer)
+  (cond
+   ;; hipparcos designators can be passed in as numbers
+   ((number? hip/flamsteed/bayer)
+    hip/flamsteed/bayer)
+   ;; bayer desigators can be passed in as symbols (AlpHer)
+   ((symbol? hip/flamsteed/bayer)
+    ;; split symbol on uppercase boundaries
+    (and-let* ((m (string-match '(: ($ upper (+ lower))
+				    ($ (? numeric))
+				    ($ (+ alpha)))
+				(symbol->string hip/flamsteed/bayer)))
+	       (greekletter (list-ref m 1))
+	       (superscript (list-ref m 2))
+	       (constellation (list-ref  m 3)))
+      ;; perform a search for
+      (hyg-get-hipparcos
+       (string-append ",[0-9]*" greekletter
+		      (if (not (string-null? superscript))
+			  (string-append " *" superscript " *")
+			  "[0-9]\\? *[0-9]\\?")
+		      constellation))))
+   ;; flamsteed designators are strings ("95Her")
+   ((string? hip/flamsteed/bayer)
+    ;; split number and constellation designator
+    (and-let* ((m (string-match '(: ($ (+ numeric))
+				    ($ (+ any)))
+				hip/flamsteed/bayer))
+	       (num (list-ref m 1))
+	       (constellation (list-ref m 2)))
+      ;; perform a search for
+      (hyg-get-hipparcos
+       (string-append "," num "[A-Za-z ]\\+" constellation))))))
+
+(define (main def)
+  (let ((name (first def))
+	(iau (second def))
+	(paths (drop def 2)))
+    (printf "NAME ~S~%" name)
+    (printf "IAU ~S~%" iau)
+    (for-each
+     (lambda (path)
+       (printf "P ~A~%" (star-hipparcos (first path)))
+       (map (lambda (star)
+	      (printf "L ~A~%" (star-hipparcos star)))
+	    (cdr path)))
+     paths)))
+
+(define input (first (command-line-arguments)))
+
+(define constellation-def (with-input-from-file input read))
+
+(main constellation-def)
+
+;; (put 'and-let* 'scheme-indent-function 1)
+;; (put 'when 'scheme-indent-function 1)
