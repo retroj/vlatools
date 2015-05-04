@@ -40,6 +40,15 @@ exec csi -s "$0" "$@"
 
 (define hyg-catalog "hygfull.csv")
 
+(define (abort-program msg #!optional (status 1))
+  (print msg)
+  (exit status))
+
+(define (file-readable? file)
+  (and (file-exists? file)
+       (regular-file? file)
+       (file-read-access? file)))
+
 (define (hyg-get-records pattern)
   #;(print pattern)
   (with-input-from-pipe
@@ -96,32 +105,28 @@ exec csi -s "$0" "$@"
 (define main
   (case-lambda
    ((input)
-    (unless (and (file-exists? input)
-                 (regular-file? input)
-                 (file-read-access? input))
-      (print "error: input file not readable")
-      (exit 1))
-   (unless (and (file-exists? hyg-catalog)
-                (regular-file? hyg-catalog)
-                (file-read-access? hyg-catalog))
-     (print "error: HYG database (./hygfull.csv) not found or not readable.")
-     (print "  Obtain hygfull.csv from https://github.com/astronexus/HYG-Database/")
-     (exit 1))
-   (let* ((def (with-input-from-file input read))
-          (name (first def))
-          (iau (second def))
-          (paths (drop def 2)))
-     (printf "NAME ~S~%" name)
-     (printf "IAU ~S~%" iau)
-     (for-each
-      (lambda (path)
-        (printf "P ~A~%" (star-hipparcos (first path)))
-        (map (lambda (star)
-               (printf "L ~A~%" (star-hipparcos star)))
-             (cdr path)))
-      paths)))
-  (_
-   (print "usage: make-asterism <input>")
-   (exit 1))))
+    (unless (file-readable? input)
+      (abort-program "error: input file not readable"))
+    (unless (file-readable? hyg-catalog)
+      (abort-program
+       (string-append
+        "error: HYG database (./hygfull.csv) not found or not readable.\n"
+        "  Obtain hygfull.csv from https://github.com/astronexus/HYG-Database/")))
+    (let* ((def (with-input-from-file input read))
+           (name (first def))
+           (iau (second def))
+           (paths (drop def 2)))
+      (printf "NAME ~S~%" name)
+      (printf "IAU ~S~%" iau)
+      (for-each
+       (lambda (path)
+         (printf "P ~A~%" (star-hipparcos (first path)))
+         (map (lambda (star)
+                (printf "L ~A~%" (star-hipparcos star)))
+              (cdr path)))
+       paths)))
+   (_
+    (print "usage: make-asterism <input>")
+    (exit 1))))
 
 (apply main (command-line-arguments))
