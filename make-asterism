@@ -60,48 +60,58 @@ exec csi -s "$0" "$@"
 
 (define (hyg-get-hipparcos pattern)
   (let ((recs (hyg-get-records pattern)))
-    (when (null? recs)
-      (printf "failed to match: ~S~%" pattern))
-    (and-let* ((m (string-match '(: (+ (~ #\,)) #\,
+    (and-let* ((first-match (and (not (null? recs)) (first recs)))
+               (m (string-match '(: (+ (~ #\,)) #\,
 				    ($ (* (~ #\,)))
 				    (* any))
-				(first recs)))
+				first-match))
 	       (hip (list-ref m 1)))
       (string->number hip))))
 
+;; star-hipparcos returns the hipparcos designator for the given
+;; hipparcos, flamsteed, or bayer star designation.  If the argument is
+;; numeric, then it is considered to be a hipparcos designator already and
+;; returned unchanged.  Otherwise the argument may be a string or a
+;; symbol, and will be parsed as a bayer (AlpHer) or flamsteed (95Her)
+;; designation, and looked up in the HYG Database.
+;;
 (define (star-hipparcos hip/flamsteed/bayer)
-  (cond
-   ;; hipparcos designators can be passed in as numbers
-   ((number? hip/flamsteed/bayer)
-    hip/flamsteed/bayer)
-   ;; bayer desigators can be passed in as symbols (AlpHer)
-   ((symbol? hip/flamsteed/bayer)
-    ;; split symbol on uppercase boundaries
-    (and-let* ((m (string-match '(: ($ upper (+ lower))
-				    ($ (? numeric))
-				    ($ (+ alpha)))
-				(symbol->string hip/flamsteed/bayer)))
-	       (greekletter (list-ref m 1))
-	       (superscript (list-ref m 2))
-	       (constellation (list-ref  m 3)))
-      ;; perform a search for
-      (hyg-get-hipparcos
-       (string-append ",[0-9]*" greekletter
-		      (if (not (string-null? superscript))
-			  (string-append " *" superscript " *")
-			  "[0-9]\\? *[0-9]\\?")
-		      constellation))))
-   ;; flamsteed designators are strings ("95Her")
-   ((string? hip/flamsteed/bayer)
-    ;; split number and constellation designator
-    (and-let* ((m (string-match '(: ($ (+ numeric))
-				    ($ (+ any)))
-				hip/flamsteed/bayer))
-	       (num (list-ref m 1))
-	       (constellation (list-ref m 2)))
-      ;; perform a search for
-      (hyg-get-hipparcos
-       (string-append "," num "[A-Za-z ]\\+" constellation))))))
+  (if (number? hip/flamsteed/bayer)
+      ;; Hipparcos designator; return unchanged.
+      hip/flamsteed/bayer
+      (let ((des (->string hip/flamsteed/bayer)))
+        (or
+         (cond
+
+          ;; Bayer designator (AlpHer, Alp2Her)
+          ((string-match '(: ($ upper (+ lower))
+                             ($ (? numeric))
+                             ($ (+ alpha)))
+                         des)
+           => (lambda (m)
+                (let ((greekletter (list-ref m 1))
+                      (superscript (list-ref m 2))
+                      (constellation (list-ref m 3)))
+                  (hyg-get-hipparcos
+                   (string-append ",[0-9]*" greekletter
+                                  (if (not (string-null? superscript))
+                                      (string-append " *" superscript " *")
+                                      "[0-9]\\? *[0-9]\\?")
+                                  constellation)))))
+
+          ;; Flamsteed designator (95Her)
+          ((string-match '(: ($ (+ numeric))
+                             ($ (+ any)))
+                         des)
+           => (lambda (m)
+                (let ((num (list-ref m 1))
+                      (constellation (list-ref m 2)))
+                  (hyg-get-hipparcos
+                   (string-append "," num "[A-Za-z ]\\+" constellation)))))
+
+          (else
+           (abort-program (sprintf "failed to parse star designator: ~A" des))))
+         (abort-program (sprintf "star designator not found in database: ~A" des))))))
 
 (define main
   (case-lambda
