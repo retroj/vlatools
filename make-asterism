@@ -129,8 +129,29 @@ exec csi -s "$0" "$@"
 ;; Main
 ;;
 
-(define (output-digistar-asterism)
-  #t)
+(define-record-type :asterism
+  (%make-asterism name iau paths)
+  asterism?
+  (name asterism-name)
+  (iau asterism-iau)
+  (paths asterism-paths))
+
+(define (make-asterism spec)
+  (let ((name (first spec))
+        (iau (second spec))
+        (paths (drop spec 2)))
+    (%make-asterism name iau paths)))
+
+(define (output-digistar-asterism asterism)
+  (printf "NAME ~S~%" (asterism-name asterism))
+  (printf "IAU ~S~%" (asterism-iau asterism))
+  (for-each
+   (lambda (path)
+     (printf "P ~A~%" (star-hipparcos (first path)))
+     (map (lambda (star)
+            (printf "L ~A~%" (star-hipparcos star)))
+          (cdr path)))
+   (asterism-paths asterism)))
 
 (define (output-digistar-trail-script)
   #t)
@@ -154,19 +175,8 @@ exec csi -s "$0" "$@"
        (string-append
         "HYG database (./hygfull.csv) not found or not readable.\n"
         "  Obtain hygfull.csv from https://github.com/astronexus/HYG-Database/")))
-    (let* ((def (with-input-from-file input read))
-           (name (first def))
-           (iau (second def))
-           (paths (drop def 2)))
-      (printf "NAME ~S~%" name)
-      (printf "IAU ~S~%" iau)
-      (for-each
-       (lambda (path)
-         (printf "P ~A~%" (star-hipparcos (first path)))
-         (map (lambda (star)
-                (printf "L ~A~%" (star-hipparcos star)))
-              (cdr path)))
-       paths)))
+    (let ((def (with-input-from-file input read)))
+      ((output-format) (make-asterism def))))
    (_
     (print "usage: make-asterism <input>")
     (exit 1))))
