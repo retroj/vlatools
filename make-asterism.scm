@@ -177,7 +177,7 @@ exec csi -s "$0" "$@"
     (unless (file-readable? (hyg-database))
       (abort-program
        (string-append
-        "HYG database (./hygfull.csv) not found or not readable.\n"
+        "HYG database (" (hyg-database) ") not found or not readable.\n"
         "  Obtain hygfull.csv from https://github.com/astronexus/HYG-Database/")))
     (let ((def (with-input-from-file input read)))
       ((output-format) (make-asterism def))))
