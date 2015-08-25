@@ -190,7 +190,7 @@ exec csi -s "$0" "$@"
           (cdr path)))
    (asterism-paths asterism)))
 
-(define (output-digistar-trail-script)
+(define (output-digistar-trail-script asterism)
   #t)
 
 (define output-format (make-parameter output-digistar-asterism))
