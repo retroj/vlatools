@@ -42,7 +42,7 @@ exec csi -s "$0" "$@"
 ;; Options
 ;;
 
-(define hyg-catalog "hygfull.csv")
+(define hyg-database (make-parameter "hygfull.csv"))
 
 
 ;; Utils
@@ -66,7 +66,7 @@ exec csi -s "$0" "$@"
 (define (hyg-get-records pattern)
   (with-input-from-pipe
    (string-join
-    (map qs (list "grep" pattern hyg-catalog))
+    (map qs (list "grep" pattern (hyg-database)))
     " ")
    read-lines))
 
@@ -160,6 +160,10 @@ exec csi -s "$0" "$@"
 
 (define command-line-options
   (list
+   (args:make-option (hyg-database) (required: "FILENAME")
+                     "Set location of HYG Database file"
+     (hyg-database arg))
+
    (args:make-option (trail) #:none
                      "Output a Digistar script that draws a trail"
      (output-format output-digistar-trail-script))))
@@ -170,7 +174,7 @@ exec csi -s "$0" "$@"
    ((options (input))
     (unless (file-readable? input)
       (abort-program "input file not readable"))
-    (unless (file-readable? hyg-catalog)
+    (unless (file-readable? (hyg-database))
       (abort-program
        (string-append
         "HYG database (./hygfull.csv) not found or not readable.\n"
