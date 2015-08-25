@@ -33,7 +33,9 @@ exec csi -s "$0" "$@"
 
 (use (srfi 1 13)
      args
+     data-structures
      extras
+     list-utils
      matchable
      posix
      regex
@@ -41,6 +43,25 @@ exec csi -s "$0" "$@"
 
 ;; Options
 ;;
+
+(define hyg-database-field-types
+  `((StarID . ,string->number)
+    (Hip . ,string->number)
+    (HD . ,string->number)
+    #;(HR)
+    #;(Gliese)
+    #;(BayerFlamsteed)
+    #;(ProperName)
+    (RA . ,string->number)
+    (Dec . ,string->number)
+    (Distance . ,string->number)
+    (Mag . ,string->number)
+    (AbsMag . ,string->number)
+    #;(Spectrum)
+    (ColorIndex . ,string->number)))
+
+(define hyg-database-fields #f)
+(define hyg-database-field-converters #f)
 
 (define hyg-database (make-parameter "hygfull.csv"))
 
@@ -63,15 +84,63 @@ exec csi -s "$0" "$@"
 ;; HYG Database
 ;;
 
-(define (hyg-get-records pattern)
+(define (hyg-get-records/pattern pattern)
   (with-input-from-pipe
    (string-join
     (map qs (list "grep" pattern (hyg-database)))
     " ")
    read-lines))
 
-(define (hyg-get-hipparcos pattern)
-  (let ((recs (hyg-get-records pattern)))
+(define (hyg-get-records designator)
+  (zip-alist
+   hyg-database-fields
+   (map
+    (match-lambda ((proc data) (proc data)))
+    (zip
+     hyg-database-field-converters
+     (string-split
+      (first
+       (let ((des (->string designator)))
+         (or
+          (cond
+           ;; Hipparcos designator
+           ((number? designator)
+            ;;XXX: assumes it's the second field
+            (hyg-get-records/pattern (string-append "^[^,]+," des ",")))
+
+           ;; Bayer designator (AlpHer, Alp2Her)
+           ((string-match '(: ($ upper (+ lower))
+                              ($ (? numeric))
+                              ($ (+ alpha)))
+                          des)
+            => (lambda (m)
+                 (let ((greekletter (list-ref m 1))
+                       (superscript (list-ref m 2))
+                       (constellation (list-ref m 3)))
+                   (hyg-get-records/pattern
+                    (string-append ",[0-9]*" greekletter
+                                   (if (not (string-null? superscript))
+                                       (string-append " *" superscript " *")
+                                       "[0-9]\\? *[0-9]\\?")
+                                   constellation)))))
+
+           ;; Flamsteed designator (95Her)
+           ((string-match '(: ($ (+ numeric))
+                              ($ (+ any)))
+                          des)
+            => (lambda (m)
+                 (let ((num (list-ref m 1))
+                       (constellation (list-ref m 2)))
+                   (hyg-get-records/pattern
+                    (string-append "," num "[A-Za-z ]\\+" constellation)))))
+
+           (else
+            (abort-program (sprintf "failed to parse star designator: ~A" des))))
+          (abort-program (sprintf "star designator not found in database: ~A" des)))))
+      "," #t)))))
+
+(define (hyg-get-hipparcos/pattern pattern)
+  (let ((recs (hyg-get-records/pattern pattern)))
     (and-let* ((first-match (and (not (null? recs)) (first recs)))
                (m (string-match '(: (+ (~ #\,)) #\,
 				    ($ (* (~ #\,)))
@@ -80,76 +149,44 @@ exec csi -s "$0" "$@"
 	       (hip (list-ref m 1)))
       (string->number hip))))
 
-;; star-hipparcos returns the hipparcos designator for the given
-;; hipparcos, flamsteed, or bayer star designation.  If the argument is
-;; numeric, then it is considered to be a hipparcos designator already and
-;; returned unchanged.  Otherwise the argument may be a string or a
-;; symbol, and will be parsed as a bayer (AlpHer) or flamsteed (95Her)
-;; designation, and looked up in the HYG Database.
+
+;; Asterism Record
 ;;
-(define (star-hipparcos hip/flamsteed/bayer)
-  (if (number? hip/flamsteed/bayer)
-      ;; Hipparcos designator; return unchanged.
-      hip/flamsteed/bayer
-      (let ((des (->string hip/flamsteed/bayer)))
-        (or
-         (cond
 
-          ;; Bayer designator (AlpHer, Alp2Her)
-          ((string-match '(: ($ upper (+ lower))
-                             ($ (? numeric))
-                             ($ (+ alpha)))
-                         des)
-           => (lambda (m)
-                (let ((greekletter (list-ref m 1))
-                      (superscript (list-ref m 2))
-                      (constellation (list-ref m 3)))
-                  (hyg-get-hipparcos
-                   (string-append ",[0-9]*" greekletter
-                                  (if (not (string-null? superscript))
-                                      (string-append " *" superscript " *")
-                                      "[0-9]\\? *[0-9]\\?")
-                                  constellation)))))
+(define-record-type :asterism
+  (%make-asterism name iau paths objects)
+  asterism?
+  (name asterism-name)
+  (iau asterism-iau)
+  (paths asterism-paths)
+  (objects asterism-objects))
 
-          ;; Flamsteed designator (95Her)
-          ((string-match '(: ($ (+ numeric))
-                             ($ (+ any)))
-                         des)
-           => (lambda (m)
-                (let ((num (list-ref m 1))
-                      (constellation (list-ref m 2)))
-                  (hyg-get-hipparcos
-                   (string-append "," num "[A-Za-z ]\\+" constellation)))))
+(define (make-asterism spec)
+  (let* ((name (first spec))
+        (iau (second spec))
+        (paths (drop spec 2))
+        (objects (map
+                  (lambda (designator) (cons designator (hyg-get-records designator)))
+                  (delete-duplicates (apply append paths)))))
+    (%make-asterism name iau paths objects)))
 
-          (else
-           (abort-program (sprintf "failed to parse star designator: ~A" des))))
-         (abort-program (sprintf "star designator not found in database: ~A" des))))))
+(define (asterism-star-hipparcos asterism designator)
+  (alist-ref
+   'Hip
+   (alist-ref designator (asterism-objects asterism))))
 
 
 ;; Main
 ;;
-
-(define-record-type :asterism
-  (%make-asterism name iau paths)
-  asterism?
-  (name asterism-name)
-  (iau asterism-iau)
-  (paths asterism-paths))
-
-(define (make-asterism spec)
-  (let ((name (first spec))
-        (iau (second spec))
-        (paths (drop spec 2)))
-    (%make-asterism name iau paths)))
 
 (define (output-digistar-asterism asterism)
   (printf "NAME ~S~%" (asterism-name asterism))
   (printf "IAU ~S~%" (asterism-iau asterism))
   (for-each
    (lambda (path)
-     (printf "P ~A~%" (star-hipparcos (first path)))
+     (printf "P ~A~%" (asterism-star-hipparcos asterism (first path)))
      (map (lambda (star)
-            (printf "L ~A~%" (star-hipparcos star)))
+            (printf "L ~A~%" (asterism-star-hipparcos asterism star)))
           (cdr path)))
    (asterism-paths asterism)))
 
@@ -180,6 +217,15 @@ exec csi -s "$0" "$@"
         "HYG database (" (hyg-database) ") not found or not readable.\n"
         "  Obtain hygfull.csv from https://github.com/astronexus/HYG-Database/")))
     (let ((def (with-input-from-file input read)))
+      (let ((hyg-database-fields-spec
+             (with-input-from-file (hyg-database) read-line)))
+        (set! hyg-database-fields
+              (map string->symbol (string-split hyg-database-fields-spec ",")))
+        (set! hyg-database-field-converters
+              (map (lambda (field)
+                     (or (alist-ref field hyg-database-field-types)
+                         identity))
+                   hyg-database-fields)))
       ((output-format) (make-asterism def))))
    (_
     (print "usage: make-asterism <input>")
