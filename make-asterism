@@ -37,7 +37,14 @@ exec csi -s "$0" "$@"
      regex
      utils)
 
+;; Options
+;;
+
 (define hyg-catalog "hygfull.csv")
+
+
+;; Utils
+;;
 
 (define (abort-program msg #!optional (status 1))
   (with-output-to-port (current-error-port)
@@ -49,6 +56,10 @@ exec csi -s "$0" "$@"
   (and (file-exists? file)
        (regular-file? file)
        (file-read-access? file)))
+
+
+;; HYG Database
+;;
 
 (define (hyg-get-records pattern)
   (with-input-from-pipe
@@ -111,6 +122,10 @@ exec csi -s "$0" "$@"
           (else
            (abort-program (sprintf "failed to parse star designator: ~A" des))))
          (abort-program (sprintf "star designator not found in database: ~A" des))))))
+
+
+;; Main
+;;
 
 (define main
   (case-lambda
