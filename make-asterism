@@ -32,7 +32,9 @@ exec csi -s "$0" "$@"
 (import chicken scheme)
 
 (use (srfi 1 13)
+     args
      extras
+     matchable
      posix
      regex
      utils)
@@ -127,9 +129,24 @@ exec csi -s "$0" "$@"
 ;; Main
 ;;
 
-(define main
-  (case-lambda
-   ((input)
+(define (output-digistar-asterism)
+  #t)
+
+(define (output-digistar-trail-script)
+  #t)
+
+(define output-format (make-parameter output-digistar-asterism))
+
+(define command-line-options
+  (list
+   (args:make-option (trail) #:none
+                     "Output a Digistar script that draws a trail"
+     (output-format output-digistar-trail-script))))
+
+(call-with-values
+    (lambda () (args:parse (command-line-arguments) command-line-options))
+  (match-lambda*
+   ((options (input))
     (unless (file-readable? input)
       (abort-program "input file not readable"))
     (unless (file-readable? hyg-catalog)
@@ -153,5 +170,3 @@ exec csi -s "$0" "$@"
    (_
     (print "usage: make-asterism <input>")
     (exit 1))))
-
-(apply main (command-line-arguments))
