@@ -80,6 +80,11 @@ exec csi -s "$0" "$@"
        (regular-file? file)
        (file-read-access? file)))
 
+(define (angular-separation ra1 dec1 ra2 dec2)
+  (acos (+ (* (sin dec1) (sin dec2))
+           (* (cos dec1) (cos dec2)
+              (cos (- ra1 ra2))))))
+
 
 ;; HYG Database
 ;;
