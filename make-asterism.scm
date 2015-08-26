@@ -228,7 +228,17 @@ exec csi -s "$0" "$@"
   ;; Generate event list
   ;;
   (let* ((objects (asterism-objects asterism))
-         (speed 1)
+         (speed 0.5) ;; radians per second
+         (start-drawing-time 0.2)
+         (trail-dsobs (map (lambda _ (get-dsob-name)) (asterism-paths asterism)))
+         (trails-parent-dsob (sprintf "~Atrails" (asterism-iau asterism)))
+         (initial-positions
+          (map
+           (match-lambda
+            ((first-object . _)
+             (list (asterism-star-ra asterism first-object)
+                   (asterism-star-dec asterism first-object))))
+           (asterism-paths asterism)))
          (events
           (map
            (match-lambda
@@ -239,46 +249,86 @@ exec csi -s "$0" "$@"
                    duration ra dec)))
            (sort
             (append-map
-             (lambda (path)
-               (let ((trail-dsob (get-dsob-name)))
-                 (let loop ((time 0.0)
-                            (prev (first path))
-                            (remainder (rest path))
-                            (result `(,(list trail-dsob -0.1 0.0
-                                             (asterism-star-ra asterism (first path))
-                                             (asterism-star-dec asterism (first path))))))
-                   (if (null? remainder)
-                       result
-                       (let* ((next (first remainder))
-                              (ra1 (asterism-star-ra asterism prev))
-                              (dec1 (asterism-star-dec asterism prev))
-                              (ra2 (asterism-star-ra asterism next))
-                              (dec2 (asterism-star-dec asterism next))
-                              (sep (angular-separation ra1 dec1 ra2 dec2))
-                              (duration (/ sep speed))
-                              (nexttime (+ time duration)))
-                         (loop nexttime next (rest remainder)
-                               (cons (list trail-dsob time duration ra2 dec2) result)))))))
-             (asterism-paths asterism))
+             (lambda (path trail-dsob)
+               (let loop ((time 0.0)
+                          (prev (first path))
+                          (remainder (rest path))
+                          (result '()))
+                 (if (null? remainder)
+                     result
+                     (let* ((next (first remainder))
+                            (ra1 (asterism-star-ra asterism prev))
+                            (dec1 (asterism-star-dec asterism prev))
+                            (ra2 (asterism-star-ra asterism next))
+                            (dec2 (asterism-star-dec asterism next))
+                            (sep (angular-separation ra1 dec1 ra2 dec2))
+                            (duration (/ sep speed))
+                            (nexttime (+ time duration)))
+                       (loop nexttime next (rest remainder)
+                             (cons (list trail-dsob time duration ra2 dec2) result))))))
+             (asterism-paths asterism)
+             trail-dsobs)
             (lambda (a b) (< (second a) (second b)))))))
-    ;; Translate event list into Digistar Script
-    ;;
+
     (define (trunc n)
       (* 0.001 (truncate (* n 1000))))
-    (printf "0.0")
+
+    ;; Initialize trails
+    ;;
+    (let ((first-trail-dsob (first trail-dsobs)))
+      (printf "\t~A is trailclass~%" first-trail-dsob)
+      (printf "\t~A intensity inherited~%" first-trail-dsob)
+      (printf "\t~A frame 1~%" first-trail-dsob)
+      (printf "\t~A screenspace off~%" first-trail-dsob)
+      (newline)
+      (for-each
+       (lambda (dsob)
+         (printf "\t~A is ~A~%" dsob first-trail-dsob))
+       (rest trail-dsobs))
+      (newline)
+      (for-each
+       (match-lambda*
+        ((dsob (ra dec))
+         (printf "\t~A position celestial ~A ~A 1 ly~%" dsob (trunc ra) (trunc dec))))
+       trail-dsobs
+       initial-positions)
+      (newline)
+      (printf "\t~A is emptyclass~%" trails-parent-dsob)
+      (printf "\t~A intensity 100~%" trails-parent-dsob)
+      (newline)
+      (for-each
+       (lambda (dsob)
+         (printf "\t~A add ~A~%" trails-parent-dsob dsob))
+       trail-dsobs)
+      (newline)
+      (printf "\tscene add ~A~%" trails-parent-dsob)
+      (newline))
+
+    ;; Translate event list into Digistar Script
+    ;;
+    (printf "~A" start-drawing-time)
     (let loop ((event (first events))
                (events (rest events))
                (prevtime 0.0))
       (match event
         ((dsob time duration ra dec)
          (when (> time prevtime)
-           (printf "~A" (trunc time)))
+           (printf "~A" (trunc (+ start-drawing-time time))))
          (printf "\t~A position celestial ~A ~A 1 ly" dsob (trunc ra) (trunc dec))
          (if (> duration 0.0)
              (printf " duration ~A~%" (trunc duration))
              (newline))
-         (unless (null? events)
-           (loop (first events) (rest events) time)))))))
+         (if (null? events)
+             (printf "~A\t## all done~%" (trunc (+ time duration)))
+             (loop (first events) (rest events) time)))))
+
+    (newline)
+    (printf "+10\t~A intensity 0 duration 5~%" trails-parent-dsob)
+    (printf "+5\t~A delete~%" trails-parent-dsob)
+    (for-each
+     (lambda (dsob)
+       (printf "\t~A delete~%" dsob))
+     trail-dsobs)))
 
 (define output-format (make-parameter output-digistar-asterism))
 
