@@ -319,7 +319,7 @@ exec csi -s "$0" "$@"
              (printf " duration ~A~%" (trunc duration))
              (newline))
          (if (null? events)
-             (printf "~A\t## all done~%" (trunc (+ time duration)))
+             (printf "~A\t## all done~%" (trunc (+ start-drawing-time time duration)))
              (loop (first events) (rest events) time)))))
 
     (newline)
