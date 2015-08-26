@@ -35,8 +35,10 @@ exec csi -s "$0" "$@"
      args
      data-structures
      extras
+     linear-algebra
      list-utils
      matchable
+     (only miscmacros inc!)
      posix
      regex
      utils)
@@ -69,6 +71,10 @@ exec csi -s "$0" "$@"
 ;; Utils
 ;;
 
+(define tau (* 2 pi))
+
+(define rest cdr)
+
 (define (abort-program msg #!optional (status 1))
   (with-output-to-port (current-error-port)
     (lambda ()
@@ -80,10 +86,20 @@ exec csi -s "$0" "$@"
        (regular-file? file)
        (file-read-access? file)))
 
+(define (degrees->radians d)
+  (* tau (/ d 360.0)))
+
+(define (hours->radians h)
+  (* tau (/ h 24.0)))
+
 (define (angular-separation ra1 dec1 ra2 dec2)
-  (acos (+ (* (sin dec1) (sin dec2))
-           (* (cos dec1) (cos dec2)
-              (cos (- ra1 ra2))))))
+  (let ((ra1 (hours->radians ra1))
+        (dec1 (degrees->radians dec1))
+        (ra2 (hours->radians ra2))
+        (dec2 (degrees->radians dec2)))
+    (acos (+ (* (sin dec1) (sin dec2))
+             (* (cos dec1) (cos dec2)
+                (cos (- ra1 ra2)))))))
 
 
 ;; HYG Database
@@ -180,6 +196,16 @@ exec csi -s "$0" "$@"
    'Hip
    (alist-ref designator (asterism-objects asterism))))
 
+(define (asterism-star-ra asterism designator)
+  (alist-ref
+   'RA
+   (alist-ref designator (asterism-objects asterism))))
+
+(define (asterism-star-dec asterism designator)
+  (alist-ref
+   'Dec
+   (alist-ref designator (asterism-objects asterism))))
+
 
 ;; Main
 ;;
@@ -196,7 +222,63 @@ exec csi -s "$0" "$@"
    (asterism-paths asterism)))
 
 (define (output-digistar-trail-script asterism)
-  #t)
+  (define get-dsob-name
+    (let ((i -1))
+      (lambda () (sprintf "~Atrail~A" (asterism-iau asterism) (inc! i)))))
+  ;; Generate event list
+  ;;
+  (let* ((objects (asterism-objects asterism))
+         (speed 1)
+         (events
+          (map
+           (match-lambda
+            ((dsob time duration ra dec)
+             (list dsob (if (< time 0.0)
+                            0.0
+                            time)
+                   duration ra dec)))
+           (sort
+            (append-map
+             (lambda (path)
+               (let ((trail-dsob (get-dsob-name)))
+                 (let loop ((time 0.0)
+                            (prev (first path))
+                            (remainder (rest path))
+                            (result `(,(list trail-dsob -0.1 0.0
+                                             (asterism-star-ra asterism (first path))
+                                             (asterism-star-dec asterism (first path))))))
+                   (if (null? remainder)
+                       result
+                       (let* ((next (first remainder))
+                              (ra1 (asterism-star-ra asterism prev))
+                              (dec1 (asterism-star-dec asterism prev))
+                              (ra2 (asterism-star-ra asterism next))
+                              (dec2 (asterism-star-dec asterism next))
+                              (sep (angular-separation ra1 dec1 ra2 dec2))
+                              (duration (/ sep speed))
+                              (nexttime (+ time duration)))
+                         (loop nexttime next (rest remainder)
+                               (cons (list trail-dsob time duration ra2 dec2) result)))))))
+             (asterism-paths asterism))
+            (lambda (a b) (< (second a) (second b)))))))
+    ;; Translate event list into Digistar Script
+    ;;
+    (define (trunc n)
+      (* 0.001 (truncate (* n 1000))))
+    (printf "0.0")
+    (let loop ((event (first events))
+               (events (rest events))
+               (prevtime 0.0))
+      (match event
+        ((dsob time duration ra dec)
+         (when (> time prevtime)
+           (printf "~A" (trunc time)))
+         (printf "\t~A position celestial ~A ~A 1 ly" dsob (trunc ra) (trunc dec))
+         (if (> duration 0.0)
+             (printf " duration ~A~%" (trunc duration))
+             (newline))
+         (unless (null? events)
+           (loop (first events) (rest events) time)))))))
 
 (define output-format (make-parameter output-digistar-asterism))
 
