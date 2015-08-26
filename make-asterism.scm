@@ -127,7 +127,7 @@ exec csi -s "$0" "$@"
            ;; Hipparcos designator
            ((number? designator)
             ;;XXX: assumes it's the second field
-            (hyg-get-records/pattern (string-append "^[^,]+," des ",")))
+            (hyg-get-records/pattern (string-append "^[^,]\\+," des ",")))
 
            ;; Bayer designator (AlpHer, Alp2Her)
            ((string-match '(: ($ upper (+ lower))
