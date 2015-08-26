@@ -206,6 +206,11 @@ exec csi -s "$0" "$@"
    'Dec
    (alist-ref designator (asterism-objects asterism))))
 
+(define (asterism-star-distance asterism designator)
+  (alist-ref
+   'Distance ;; parsecs
+   (alist-ref designator (asterism-objects asterism))))
+
 
 ;; Main
 ;;
@@ -237,38 +242,33 @@ exec csi -s "$0" "$@"
            (match-lambda
             ((first-object . _)
              (list (asterism-star-ra asterism first-object)
-                   (asterism-star-dec asterism first-object))))
+                   (asterism-star-dec asterism first-object)
+                   (asterism-star-distance asterism first-object))))
            (asterism-paths asterism)))
          (events
-          (map
-           (match-lambda
-            ((dsob time duration ra dec)
-             (list dsob (if (< time 0.0)
-                            0.0
-                            time)
-                   duration ra dec)))
-           (sort
-            (append-map
-             (lambda (path trail-dsob)
-               (let loop ((time 0.0)
-                          (prev (first path))
-                          (remainder (rest path))
-                          (result '()))
-                 (if (null? remainder)
-                     result
-                     (let* ((next (first remainder))
-                            (ra1 (asterism-star-ra asterism prev))
-                            (dec1 (asterism-star-dec asterism prev))
-                            (ra2 (asterism-star-ra asterism next))
-                            (dec2 (asterism-star-dec asterism next))
-                            (sep (angular-separation ra1 dec1 ra2 dec2))
-                            (duration (/ sep speed))
-                            (nexttime (+ time duration)))
-                       (loop nexttime next (rest remainder)
-                             (cons (list trail-dsob time duration ra2 dec2) result))))))
-             (asterism-paths asterism)
-             trail-dsobs)
-            (lambda (a b) (< (second a) (second b)))))))
+          (sort
+           (append-map
+            (lambda (path trail-dsob)
+              (let loop ((time 0.0)
+                         (prev (first path))
+                         (remainder (rest path))
+                         (result '()))
+                (if (null? remainder)
+                    result
+                    (let* ((next (first remainder))
+                           (ra1 (asterism-star-ra asterism prev))
+                           (dec1 (asterism-star-dec asterism prev))
+                           (ra2 (asterism-star-ra asterism next))
+                           (dec2 (asterism-star-dec asterism next))
+                           (sep (angular-separation ra1 dec1 ra2 dec2))
+                           (duration (/ sep speed))
+                           (nexttime (+ time duration))
+                           (distance (asterism-star-distance asterism next)))
+                      (loop nexttime next (rest remainder)
+                            (cons (list trail-dsob time duration ra2 dec2 distance) result))))))
+            (asterism-paths asterism)
+            trail-dsobs)
+           (lambda (a b) (< (second a) (second b))))))
 
     (define (trunc n)
       (* 0.001 (truncate (* n 1000))))
@@ -311,10 +311,11 @@ exec csi -s "$0" "$@"
                (events (rest events))
                (prevtime 0.0))
       (match event
-        ((dsob time duration ra dec)
+        ((dsob time duration ra dec distance)
          (when (> time prevtime)
            (printf "~A" (trunc (+ start-drawing-time time))))
-         (printf "\t~A position celestial ~A ~A 1 ly" dsob (trunc ra) (trunc dec))
+         (printf "\t~A position celestial ~A ~A ~A pc"
+                 dsob (trunc ra) (trunc dec) (trunc distance))
          (if (> duration 0.0)
              (printf " duration ~A~%" (trunc duration))
              (newline))
