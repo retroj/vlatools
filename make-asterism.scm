@@ -288,8 +288,9 @@ exec csi -s "$0" "$@"
       (newline)
       (for-each
        (match-lambda*
-        ((dsob (ra dec))
-         (printf "\t~A position celestial ~A ~A 1 ly~%" dsob (trunc ra) (trunc dec))))
+        ((dsob (ra dec distance))
+         (printf "\t~A position celestial ~A ~A ~A pc~%"
+                 dsob (trunc ra) (trunc dec) (trunc distance))))
        trail-dsobs
        initial-positions)
       (newline)
