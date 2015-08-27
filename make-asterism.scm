@@ -241,35 +241,28 @@ exec csi -s "$0" "$@"
                    first-object)))
            (asterism-paths asterism)))
          (events
-          (map
-           (match-lambda
-            ((dsob time duration ra dec object)
-             (list dsob (if (< time 0.0)
-                            0.0
-                            time)
-                   duration ra dec object)))
-           (sort
-            (append-map
-             (lambda (path trail-dsob)
-               (let loop ((time 0.0)
-                          (prev (first path))
-                          (remainder (rest path))
-                          (result '()))
-                 (if (null? remainder)
-                     result
-                     (let* ((next (first remainder))
-                            (ra1 (asterism-star-ra asterism prev))
-                            (dec1 (asterism-star-dec asterism prev))
-                            (ra2 (asterism-star-ra asterism next))
-                            (dec2 (asterism-star-dec asterism next))
-                            (sep (angular-separation ra1 dec1 ra2 dec2))
-                            (duration (/ sep speed))
-                            (nexttime (+ time duration)))
-                       (loop nexttime next (rest remainder)
-                             (cons (list trail-dsob time duration ra2 dec2 next) result))))))
-             (asterism-paths asterism)
-             trail-dsobs)
-            (lambda (a b) (< (second a) (second b)))))))
+          (sort
+           (append-map
+            (lambda (path trail-dsob)
+              (let loop ((time 0.0)
+                         (prev (first path))
+                         (remainder (rest path))
+                         (result '()))
+                (if (null? remainder)
+                    result
+                    (let* ((next (first remainder))
+                           (ra1 (asterism-star-ra asterism prev))
+                           (dec1 (asterism-star-dec asterism prev))
+                           (ra2 (asterism-star-ra asterism next))
+                           (dec2 (asterism-star-dec asterism next))
+                           (sep (angular-separation ra1 dec1 ra2 dec2))
+                           (duration (/ sep speed))
+                           (nexttime (+ time duration)))
+                      (loop nexttime next (rest remainder)
+                            (cons (list trail-dsob time duration ra2 dec2 next) result))))))
+            (asterism-paths asterism)
+            trail-dsobs)
+           (lambda (a b) (< (second a) (second b))))))
 
     (define (trunc n)
       (* 0.001 (truncate (* n 1000))))
