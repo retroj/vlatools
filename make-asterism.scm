@@ -237,16 +237,17 @@ exec csi -s "$0" "$@"
            (match-lambda
             ((first-object . _)
              (list (asterism-star-ra asterism first-object)
-                   (asterism-star-dec asterism first-object))))
+                   (asterism-star-dec asterism first-object)
+                   first-object)))
            (asterism-paths asterism)))
          (events
           (map
            (match-lambda
-            ((dsob time duration ra dec)
+            ((dsob time duration ra dec object)
              (list dsob (if (< time 0.0)
                             0.0
                             time)
-                   duration ra dec)))
+                   duration ra dec object)))
            (sort
             (append-map
              (lambda (path trail-dsob)
@@ -265,7 +266,7 @@ exec csi -s "$0" "$@"
                             (duration (/ sep speed))
                             (nexttime (+ time duration)))
                        (loop nexttime next (rest remainder)
-                             (cons (list trail-dsob time duration ra2 dec2) result))))))
+                             (cons (list trail-dsob time duration ra2 dec2 next) result))))))
              (asterism-paths asterism)
              trail-dsobs)
             (lambda (a b) (< (second a) (second b)))))))
@@ -288,8 +289,9 @@ exec csi -s "$0" "$@"
       (newline)
       (for-each
        (match-lambda*
-        ((dsob (ra dec))
-         (printf "\t~A position celestial ~A ~A 1 ly~%" dsob (trunc ra) (trunc dec))))
+        ((dsob (ra dec object))
+         (printf "\t~A position celestial ~A ~A 1 ly ## ~A~%"
+                 dsob (trunc ra) (trunc dec) object)))
        trail-dsobs
        initial-positions)
       (newline)
@@ -311,13 +313,11 @@ exec csi -s "$0" "$@"
                (events (rest events))
                (prevtime 0.0))
       (match event
-        ((dsob time duration ra dec)
+        ((dsob time duration ra dec object)
          (when (> time prevtime)
            (printf "~A" (trunc (+ start-drawing-time time))))
-         (printf "\t~A position celestial ~A ~A 1 ly" dsob (trunc ra) (trunc dec))
-         (if (> duration 0.0)
-             (printf " duration ~A~%" (trunc duration))
-             (newline))
+         (printf "\t~A position celestial ~A ~A 1 ly duration ~A ## ~A~%"
+                 dsob (trunc ra) (trunc dec) (trunc duration) object)
          (if (null? events)
              (printf "~A\t## all done~%" (trunc (+ start-drawing-time time duration)))
              (loop (first events) (rest events) time)))))
