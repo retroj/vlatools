@@ -13,4 +13,4 @@
           regex
           ssax
           sxml-transforms)
- (test-depends test inclub))
+ (test-depends missbehave))

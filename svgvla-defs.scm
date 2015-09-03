@@ -29,10 +29,11 @@
 
 (use srfi-1
      srfi-13
+     data-structures
      extras
      list-utils
      matchable
-     (only ports with-output-to-port)
+     ports
      regex
      ssax
      sxml-transforms
@@ -64,8 +65,7 @@
          (fit-hei (second g))
          (fit-ofx (third g))
          (fit-ofy (fourth g))))
-   (spec (terminate (sprintf "Failed to parse geometry ~S" spec)))
-   (else val)))
+   (else (terminate (sprintf "Failed to parse geometry ~S" spec)))))
 
 (define header-file (make-parameter #f))
 
