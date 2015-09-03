@@ -34,3 +34,28 @@ divide out lightyears.  Then maybe an additional scale option after that?
    :LOGBOOK:
    - State -> "TODO"  [2015-03-05 Thu]
    :END:
+* make-asterism
+** DONE output asterism-drawing script
+   :LOGBOOK:
+   - State -> "TODO"  [2015-08-25 Tue]
+   - State -> "DONE"  [2015-08-27 Thu]
+   :END:
+
+Produce a script that draws a given asterism with one or more trails, and
+when it finishes, switch to the vla stick figure.
+
+*** process
+
+ - declare trailclass for each trail
+
+       t1 is trailclass
+       t1 position celestial ...
+       t1 screenspace off ## what is this?
+       t1 frame 1
+       t1 intensity 100
+       t1 color white
+       t1 age on
+       t1 lifespan 10
+       scene add t1
+
+ - then just move the object
