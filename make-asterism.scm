@@ -225,7 +225,7 @@ exec csi -s "$0" "$@"
 (define (output-digistar-trail-script asterism)
   (define get-dsob-name
     (let ((i -1))
-      (lambda () (fmt #f (asterism-iau asterism) "trail" (num (inc! i))))))
+      (lambda () (fmt #f (asterism-iau asterism) "trail" (inc! i)))))
   ;; Generate event list
   ;;
   (let* ((objects (asterism-objects asterism))
@@ -298,7 +298,7 @@ exec csi -s "$0" "$@"
 
     ;; Translate event list into Digistar Script
     ;;
-    (fmt #t (num start-drawing-time))
+    (fmt #t start-drawing-time)
     (let loop ((event (first events))
                (events (rest events))
                (prevtime 0.0))
