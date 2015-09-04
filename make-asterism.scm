@@ -35,6 +35,7 @@ exec csi -s "$0" "$@"
      args
      data-structures
      extras
+     fmt
      linear-algebra
      list-utils
      matchable
@@ -78,7 +79,7 @@ exec csi -s "$0" "$@"
 (define (abort-program msg #!optional (status 1))
   (with-output-to-port (current-error-port)
     (lambda ()
-      (printf "error: ~A~%" msg)
+      (fmt #t "error: " msg nl)
       (exit status))))
 
 (define (file-readable? file)
@@ -156,8 +157,8 @@ exec csi -s "$0" "$@"
                     (string-append "," num "[A-Za-z ]\\+" constellation)))))
 
            (else
-            (abort-program (sprintf "failed to parse star designator: ~A" des))))
-          (abort-program (sprintf "star designator not found in database: ~A" des)))))
+            (abort-program (fmt #f "failed to parse star designator: " des))))
+          (abort-program (fmt #f "star designator not found in database: " des)))))
       "," #t)))))
 
 (define (hyg-get-hipparcos/pattern pattern)
@@ -211,27 +212,27 @@ exec csi -s "$0" "$@"
 ;;
 
 (define (output-digistar-asterism asterism)
-  (printf "NAME ~S~%" (asterism-name asterism))
-  (printf "IAU ~S~%" (asterism-iau asterism))
+  (fmt #t "NAME " (wrt (asterism-name asterism)) nl
+       "IAU " (wrt (asterism-iau asterism)) nl)
   (for-each
    (lambda (path)
-     (printf "P ~A~%" (asterism-star-hipparcos asterism (first path)))
-     (map (lambda (star)
-            (printf "L ~A~%" (asterism-star-hipparcos asterism star)))
+     (fmt #t "P " (asterism-star-hipparcos asterism (first path)) nl)
+     (for-each (lambda (star)
+                 (fmt #t "L " (asterism-star-hipparcos asterism star) nl))
           (cdr path)))
    (asterism-paths asterism)))
 
 (define (output-digistar-trail-script asterism)
   (define get-dsob-name
     (let ((i -1))
-      (lambda () (sprintf "~Atrail~A" (asterism-iau asterism) (inc! i)))))
+      (lambda () (fmt #f (asterism-iau asterism) "trail" (num (inc! i))))))
   ;; Generate event list
   ;;
   (let* ((objects (asterism-objects asterism))
          (speed 0.5) ;; radians per second
          (start-drawing-time 0.2)
          (trail-dsobs (map (lambda _ (get-dsob-name)) (asterism-paths asterism)))
-         (trails-parent-dsob (sprintf "~Atrails" (asterism-iau asterism)))
+         (trails-parent-dsob (fmt #f (asterism-iau asterism) "trails"))
          (initial-positions
           (map
            (match-lambda
@@ -265,62 +266,57 @@ exec csi -s "$0" "$@"
            (lambda (a b) (< (second a) (second b))))))
 
     (define (trunc n)
-      (* 0.001 (truncate (* n 1000))))
+      (num n 10 3))
 
     ;; Initialize trails
     ;;
     (let ((first-trail-dsob (first trail-dsobs)))
-      (printf "\t~A is trailclass~%" first-trail-dsob)
-      (printf "\t~A intensity inherited~%" first-trail-dsob)
-      (printf "\t~A frame 1~%" first-trail-dsob)
-      (printf "\t~A screenspace off~%" first-trail-dsob)
-      (newline)
+      (fmt #t "\t" first-trail-dsob " is trailclass" nl
+           "\t" first-trail-dsob " intensity inherited" nl
+           "\t" first-trail-dsob " frame 1" nl
+           "\t" first-trail-dsob " screenspace off" nl nl)
       (for-each
        (lambda (dsob)
-         (printf "\t~A is ~A~%" dsob first-trail-dsob))
+         (fmt #t "\t" dsob " is " first-trail-dsob nl))
        (rest trail-dsobs))
       (newline)
       (for-each
        (match-lambda*
         ((dsob (ra dec object))
-         (printf "\t~A position celestial ~A ~A 1 ly ## ~A~%"
-                 dsob (trunc ra) (trunc dec) object)))
+         (fmt #t "\t" dsob " position celestial "
+              (trunc ra) " " (trunc dec) " 1 ly ## "
+              object nl)))
        trail-dsobs
        initial-positions)
-      (newline)
-      (printf "\t~A is emptyclass~%" trails-parent-dsob)
-      (printf "\t~A intensity 100~%" trails-parent-dsob)
-      (newline)
+      (fmt #t nl "\t" trails-parent-dsob " is emptyclass" nl
+           "\t" trails-parent-dsob " intensity 100" nl nl)
       (for-each
        (lambda (dsob)
-         (printf "\t~A add ~A~%" trails-parent-dsob dsob))
+         (fmt #t "\t" trails-parent-dsob " add " dsob nl))
        trail-dsobs)
-      (newline)
-      (printf "\tscene add ~A~%" trails-parent-dsob)
-      (newline))
+      (fmt #t nl "\tscene add " trails-parent-dsob nl nl))
 
     ;; Translate event list into Digistar Script
     ;;
-    (printf "~A" start-drawing-time)
+    (fmt #t (num start-drawing-time))
     (let loop ((event (first events))
                (events (rest events))
                (prevtime 0.0))
       (match event
         ((dsob time duration ra dec object)
          (when (> time prevtime)
-           (printf "~A" (trunc (+ start-drawing-time time))))
-         (printf "\t~A position celestial ~A ~A 1 ly duration ~A ## ~A~%"
-                 dsob (trunc ra) (trunc dec) (trunc duration) object)
+           (fmt #t (trunc (+ start-drawing-time time))))
+         (fmt #t "\t" dsob " position celestial " (trunc ra) " " (trunc dec)
+              " 1 ly duration " (trunc duration) " ## " object nl)
          (if (null? events)
-             (printf "~A\t## all done~%" (trunc (+ start-drawing-time time duration)))
+             (fmt #t (trunc (+ start-drawing-time time duration)) "\t## all done" nl)
              (loop (first events) (rest events) time)))))
 
-    (newline)
-    (printf "+10\t~A intensity 0 duration 5~%" trails-parent-dsob)
-    (printf "+5\t~A delete~%" trails-parent-dsob)
+    (fmt #t nl "+10\t" trails-parent-dsob " intensity 0 duration 5" nl
+         "+5\t" trails-parent-dsob " delete" nl)
     (for-each
      (lambda (dsob)
-       (printf "\t~A delete~%" dsob))
+       (fmt #t "\t" dsob " delete" nl))
      trail-dsobs)))
 
 (define output-format (make-parameter output-digistar-asterism))
@@ -343,7 +339,7 @@ exec csi -s "$0" "$@"
       (abort-program "input file not readable"))
     (unless (file-readable? (hyg-database))
       (abort-program
-       (string-append
+       (fmt #f
         "HYG database (" (hyg-database) ") not found or not readable.\n"
         "  Obtain hygfull.csv from https://github.com/astronexus/HYG-Database/")))
     (let ((def (with-input-from-file input read)))
@@ -358,5 +354,5 @@ exec csi -s "$0" "$@"
                    hyg-database-fields)))
       ((output-format) (make-asterism def))))
    (_
-    (print "usage: make-asterism <input>")
+    (fmt #t "usage: make-asterism <input>" nl)
     (exit 1))))
