@@ -12,5 +12,4 @@
           ports
           regex
           ssax
-          sxml-transforms)
- (test-depends missbehave))
+          sxml-transforms))
