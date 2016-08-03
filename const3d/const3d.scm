@@ -36,7 +36,8 @@ exec csi -s $0 "$@"
      data-structures
      extras
      fmt
-     matchable)
+     matchable
+     (only miscmacros dotimes))
 
 (define boundaries-filename "bound_in_20.txt")
 
@@ -87,12 +88,12 @@ exec csi -s $0 "$@"
   (let ((theta (* tau (/ ra 24.0)))
         (phi (* tau (/ (+ (- dec) 90) 360.0))))
     (if (eq? 'RIGHT (coordsys))
-        (values
+        (list
          (* distance (cos theta) (sin phi))
          (* distance (sin theta) (sin phi))
          (* distance (cos phi)))
         (let ((distance (* 9.4607304725808e15 distance)))
-          (values
+          (list
            (* distance (cos theta) (sin phi))
            (* distance (cos phi))
            (* distance (sin theta) (sin phi)))))))
@@ -126,20 +127,36 @@ exec csi -s $0 "$@"
   (append coords (list (first coords))))
 
 (define (main/obj constellation)
-  (let* ((boundary (close-loop (read-boundary constellation)))
-         (rings 10)
+  (let* ((boundary (read-boundary constellation))
+         (nboundary-verts (length boundary))
+         (rings 3)
          (max-dist (expt 2.0 (- rings 1)))
-         (step (/ max-dist rings)))
-    (let loop-distance ((count 0)
-                        (prev-distance 1.0)
-                        (distance 2.0))
-      (cond
-       ((< count rings)
-        ;; compute vertices and faces
-        (loop-distance (+ 1 count) distance (+ distance step)))
-       (else
-        ;; maybe output stage here, after generating all vertices
-        #t)))))
+         (step (/ max-dist rings))
+         (vertices (append-map!
+                    (lambda (distance)
+                      (map
+                       (match-lambda
+                         ((ra dec) (celestial->cartesian ra dec distance)))
+                       boundary))
+                    (iota rings 1.0 step))))
+    (for-each
+     (match-lambda
+       ((x y z) (fmt #t "v " x " " y " " z nl)))
+     vertices)
+    (define (write-face a b c)
+      (let ((a (+ 1 a)) ;; vertices are 1-based indexed
+            (b (+ 1 b))
+            (c (+ 1 c)))
+        (fmt #t "f " a " " b " " c nl)))
+    (dotimes (ring (- rings 1))
+      (let ((first (* ring nboundary-verts)))
+        (dotimes (i nboundary-verts)
+          (write-face (+ first (modulo (+ 1 i) nboundary-verts))
+                      (+ first i)
+                      (+ first i nboundary-verts))
+          (write-face (+ first (modulo (+ 1 i) nboundary-verts))
+                      (+ first (+ i nboundary-verts))
+                      (+ first (modulo (+ 1 i) nboundary-verts) nboundary-verts)))))))
 
 (define (main/vla constellation)
   (let ((boundary (close-loop (read-boundary constellation))))
@@ -149,8 +166,8 @@ exec csi -s $0 "$@"
                         (distance 1.0))
       (let loop-boundary ((boundary boundary)
                           (draw-commands (cons 'P (circular-list 'L))))
-        (let*-values (((ra dec) (apply values (car boundary)))
-                      ((x y z) (celestial->cartesian ra dec distance)))
+        (match-let* (((ra dec) (car boundary))
+                     ((x y z) (celestial->cartesian ra dec distance)))
           (fmt #t (car draw-commands) " " x " " y " " z " 1.0" nl))
         (unless (null? (cdr boundary))
           (loop-boundary (cdr boundary) (cdr draw-commands))))
@@ -161,7 +178,7 @@ exec csi -s $0 "$@"
   (list
    (args:make-option (f format) (#:required "FMT")
                      "output format (VLA)"
-     (let ((format (string->symbol (string-upcase (or arg "VLA")))))
+     (let ((format (string->symbol (string-upcase arg))))
        (unless (memq format output-formats)
          (fmt #t "Unsupported output format: " format nl)
          (exit 1))
@@ -181,7 +198,7 @@ exec csi -s $0 "$@"
        (coordsys 'RIGHT)
        ;; title
        ;; depthcue
-       (case (alist-ref 'format options)
+       (case (or (alist-ref 'format options) 'VLA)
          ((VLA) (main/vla constellation))
          ((OBJ) (main/obj constellation)))))
     ((options (constellation . rest))
