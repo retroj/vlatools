@@ -13,6 +13,12 @@ the source code.  Have fun and may the source be with you.
 
 A VLA import plugin for Blender.
 
+** const3d (chicken-scheme, BSD)
+
+Const3d generates a 3D model of a constellation boundary by projecting
+the boundary out to several distances.  This allows visualization of a
+constellation from non-Earth perspectives.
+
 ** dspathtovla (python, BSD)
 
 This program converts a Digistar CSV Path to a VLA.
