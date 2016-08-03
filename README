@@ -15,9 +15,10 @@ A VLA import plugin for Blender.
 
 ** const3d (chicken-scheme, BSD)
 
-Const3d generates a 3D model of a constellation boundary by projecting
-the boundary out to several distances.  This allows visualization of a
-constellation from non-Earth perspectives.
+Const3d generates a 3D model of a constellation boundary by projecting the
+boundary out to several distances.  This allows visualization of a
+constellation from non-Earth perspectives.  It supports output in VLA and
+Wavefront OBJ.
 
 ** dspathtovla (python, BSD)
 
