@@ -13,6 +13,10 @@ the source code.  Have fun and may the source be with you.
 
 A VLA import plugin for Blender.
 
+** dspathtovla (python, BSD)
+
+This program converts a Digistar CSV Path to a VLA.
+
 ** make-asterism (chicken-scheme, BSD)
 
 A program for producing Digistar stick figure drawings.  Note: this
