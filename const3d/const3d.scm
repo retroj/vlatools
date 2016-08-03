@@ -40,6 +40,8 @@ exec csi -s $0 "$@"
 
 (define boundaries-filename "bound_in_20.txt")
 
+(define output-formats '(OBJ VLA))
+
 (define tau 6.283185307179586)
 
 (define title (make-parameter "3D constellation boundary"))
@@ -81,31 +83,6 @@ exec csi -s $0 "$@"
     ((bind-lambda* pattern . body)
      (match-lambda* (pattern . body)))))
 
-(define (read-boundary constellation)
-  (define (parse-line line)
-    (with-input-from-string line
-      (lambda ()
-        (let* ((ra (read))
-               (dec (read))
-               (const (read)))
-          (values ra dec const)))))
-  (with-input-from-file boundaries-filename
-    (lambda ()
-      (let loop ((line (read-line))
-                 (lines (list)))
-        (cond
-         ((eof-object? line) lines)
-         (else
-          (receive (ra dec const) (parse-line line)
-            (cond
-             ((eq? const constellation)
-              (loop (read-line)
-                    (cons (list ra dec) lines)))
-             ((null? lines)
-              (loop (read-line) lines))
-             (else ;; skip rest of file
-              lines)))))))))
-
 (define (celestial->cartesian ra dec distance)
   (let ((theta (* tau (/ ra 24.0)))
         (phi (* tau (/ (+ (- dec) 90) 360.0))))
@@ -120,10 +97,51 @@ exec csi -s $0 "$@"
            (* distance (cos phi))
            (* distance (sin theta) (sin phi)))))))
 
+(define (read-boundary constellation)
+  (define (parse-line line)
+    (with-input-from-string line
+      (lambda ()
+        (let* ((ra (read))
+               (dec (read))
+               (const (read)))
+          (values ra dec const)))))
+  (with-input-from-file boundaries-filename
+    (lambda ()
+      (let loop ((line (read-line))
+                 (result (list)))
+        (cond
+         ((eof-object? line) result)
+         (else
+          (receive (ra dec const) (parse-line line)
+            (cond
+             ((eq? const constellation)
+              (loop (read-line)
+                    (cons (list ra dec) result)))
+             ((null? result)
+              (loop (read-line) result))
+             (else ;; skip rest of file
+              result)))))))))
+
 (define (close-loop coords)
   (append coords (list (first coords))))
 
-(define (main constellation)
+(define (main/obj constellation)
+  (let* ((boundary (close-loop (read-boundary constellation)))
+         (rings 10)
+         (max-dist (expt 2.0 (- rings 1)))
+         (step (/ max-dist rings)))
+    (let loop-distance ((count 0)
+                        (prev-distance 1.0)
+                        (distance 2.0))
+      (cond
+       ((< count rings)
+        ;; compute vertices and faces
+        (loop-distance (+ 1 count) distance (+ distance step)))
+       (else
+        ;; maybe output stage here, after generating all vertices
+        #t)))))
+
+(define (main/vla constellation)
   (let ((boundary (close-loop (read-boundary constellation))))
     (vlaheader)
     (let loop-distance ((count 0)
@@ -139,23 +157,33 @@ exec csi -s $0 "$@"
       (when (< count 9)
         (loop-distance (+ 1 count) distance (* 2 distance))))))
 
-
 (define opts
   (list
-   (args:make-option (c constellation) (#:required "ABR")
-                     "hmm"
-     (set! arg (string->symbol (string-upcase arg))))))
+   (args:make-option (f format) (#:required "FMT")
+                     "output format (VLA)"
+     (let ((format (string->symbol (string-upcase (or arg "VLA")))))
+       (unless (memq format output-formats)
+         (fmt #t "Unsupported output format: " format nl)
+         (exit 1))
+       (set! arg format)))))
 
-(receive (options operands)
-    (args:parse (command-line-arguments) opts)
-  (let ((constellation (alist-ref 'constellation options)))
-    (unless constellation
-      (fmt #t "Constellation must be specified (-c ABR)" nl)
-      (exit 1))
-    (author "John Foerch")
-    (site "Roger B. Chaffee Planetarium")
-    (constellation-abr constellation)
-    (coordsys 'RIGHT)
-    ;; title
-    ;; depthcue
-    (main constellation)))
+(call-with-values
+    (lambda () (args:parse (command-line-arguments) opts))
+  (match-lambda*
+    ((options ())
+     (fmt #t "Constellation must be specified" nl)
+     (exit 1))
+    ((options (constellation))
+     (let ((constellation (string->symbol (string-upcase constellation))))
+       (author "John Foerch")
+       (site "Roger B. Chaffee Planetarium")
+       (constellation-abr constellation)
+       (coordsys 'RIGHT)
+       ;; title
+       ;; depthcue
+       (case (alist-ref 'format options)
+         ((VLA) (main/vla constellation))
+         ((OBJ) (main/obj constellation)))))
+    ((options (constellation . rest))
+     (fmt #t "Too many operands" nl)
+     (exit 1))))
