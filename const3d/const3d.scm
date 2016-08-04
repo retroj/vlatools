@@ -177,8 +177,16 @@ exec csi -s $0 "$@"
 
 (define opts
   (list
-   (args:make-option (f format) (#:required "FMT")
-                     "output format (VLA)"
+   (args:make-option (h help) #:none
+                     "help"
+     (fmt #t "usage: const3d [options] <const>" nl nl
+          " const: IAU abbreviation of a constellation (ori)" nl nl
+          (args:usage opts) nl)
+     (exit 1))
+   (args:make-option (f format) #:required
+                     (string-append "output format ("
+                                    (fmt #f (fmt-join dsp output-formats ", "))
+                                    ")")
      (let ((format (string->symbol (string-upcase arg))))
        (unless (memq format output-formats)
          (fmt #t "Unsupported output format: " format nl)
