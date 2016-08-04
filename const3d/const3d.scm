@@ -89,6 +89,14 @@ exec csi -s $0 "$@"
      (* distance (sin theta) (sin phi))
      (* distance (cos phi)))))
 
+(define (celestial->cartesian/obj ra dec distance)
+  (let ((theta (* tau (/ ra 24.0)))
+        (phi (* tau (/ (+ (- dec) 90) 360.0))))
+    (list
+     (* distance (cos theta) (sin phi))
+     (* distance (cos phi))
+     (- (* distance (sin theta) (sin phi))))))
+
 (define (read-boundary constellation)
   (define (parse-line line)
     (with-input-from-string line
@@ -124,14 +132,15 @@ exec csi -s $0 "$@"
          (site (alist-ref 'site options))
          (boundary (read-boundary constellation))
          (nboundary-verts (length boundary))
-         (rings 3)
-         (max-dist (expt 2.0 (- rings 1)))
+         (max-dist (expt 2 9))
+         (rings 200)
          (step (/ max-dist rings))
          (vertices (append-map!
                     (lambda (distance)
                       (map
                        (match-lambda
-                         ((ra dec) (celestial->cartesian/right ra dec distance)))
+                         ((ra dec) (celestial->cartesian/obj
+                                    ra dec (* 9.4607304725808e15 distance))))
                        boundary))
                     (iota rings 1.0 step))))
     (fmt #t
