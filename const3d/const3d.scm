@@ -164,13 +164,14 @@ exec csi -s $0 "$@"
     (let loop-distance ((count 0)
                         (prev-distance #f)
                         (distance 1.0))
-      (let loop-boundary ((boundary boundary)
-                          (draw-commands (cons 'P (circular-list 'L))))
-        (match-let* (((ra dec) (car boundary))
-                     ((x y z) (celestial->cartesian ra dec distance)))
-          (fmt #t (car draw-commands) " " x " " y " " z " 1.0" nl))
-        (unless (null? (cdr boundary))
-          (loop-boundary (cdr boundary) (cdr draw-commands))))
+      (for-each
+       (match-lambda*
+         (((ra dec) draw-command)
+          (fmt #t draw-command " "
+               (fmt-join dsp (celestial->cartesian ra dec distance) " ")
+               " 1.0" nl)))
+       boundary
+       (cons 'P (circular-list 'L)))
       (when (< count 9)
         (loop-distance (+ 1 count) distance (* 2 distance))))))
 
