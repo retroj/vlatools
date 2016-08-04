@@ -45,11 +45,9 @@ exec csi -s $0 "$@"
 
 (define tau 6.283185307179586)
 
-(define constellation-abr (make-parameter #f))
-
-(define (vlaheader-title title)
+(define (vlaheader-title title constellation)
   (define (substitute x)
-    (if (eq? 'iau x) (constellation-abr) x))
+    (if (eq? 'iau x) constellation x))
   (cat "set comment "
        (if (pair? title)
            (apply-cat (map substitute title))
@@ -57,11 +55,12 @@ exec csi -s $0 "$@"
        nl))
 
 (define (vlaheader options)
-  (let ((title (alist-ref 'title options))
+  (let ((constellation (alist-ref 'constellation options))
+        (title (alist-ref 'title options))
         (author (alist-ref 'author options))
         (site (alist-ref 'site options)))
     (fmt #t
-         (if title (vlaheader-title title) fmt-null)
+         (if title (vlaheader-title title constellation) fmt-null)
          (if author (cat "set author " author nl) fmt-null)
          (if site (cat "set site " site nl) fmt-null)
          "set filetype NEW" nl
@@ -116,8 +115,9 @@ exec csi -s $0 "$@"
 (define (close-loop coords)
   (append coords (list (first coords))))
 
-(define (main/obj constellation options)
-  (let* ((boundary (read-boundary constellation))
+(define (main/obj options)
+  (let* ((constellation (alist-ref 'constellation options))
+         (boundary (read-boundary constellation))
          (nboundary-verts (length boundary))
          (rings 3)
          (max-dist (expt 2.0 (- rings 1)))
@@ -148,8 +148,9 @@ exec csi -s $0 "$@"
                       (+ first (+ i nboundary-verts))
                       (+ first (modulo (+ 1 i) nboundary-verts) nboundary-verts)))))))
 
-(define (main/vla constellation options)
-  (let* ((boundary (close-loop (read-boundary constellation)))
+(define (main/vla options)
+  (let* ((constellation (alist-ref 'constellation options))
+         (boundary (close-loop (read-boundary constellation)))
          (coordsys (alist-ref 'vla-coordsys options))
          (celestial->cartesian (if (eq? 'left coordsys)
                                    celestial->cartesian/left
@@ -204,6 +205,7 @@ exec csi -s $0 "$@"
      (let* ((constellation (string->symbol (string-upcase constellation)))
             (options-file (alist-ref 'options-file options))
             (options (append
+                      `((constellation . ,constellation))
                       options
                       (if options-file
                          (append options
@@ -212,10 +214,9 @@ exec csi -s $0 "$@"
                       '((title . ("3D constellation boundary - " iau))
                         (vla-coordsys . right)
                         (vla-depthcue . 2)))))
-       (constellation-abr constellation)
        (case (or (alist-ref 'format options) 'VLA)
-         ((VLA) (main/vla constellation options))
-         ((OBJ) (main/obj constellation options)))))
+         ((VLA) (main/vla options))
+         ((OBJ) (main/obj options)))))
     ((options (constellation . rest))
      (fmt #t "Too many operands" nl)
      (exit 1))))
