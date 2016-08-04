@@ -72,16 +72,6 @@ exec csi -s $0 "$@"
          "set depthcue " (alist-ref 'vla-depthcue options) nl
          "set library_id UNKNOWN" nl)))
 
-(define-syntax bind-lambda
-  (syntax-rules ()
-    ((bind-lambda pattern . body)
-     (match-lambda (pattern . body)))))
-
-(define-syntax bind-lambda*
-  (syntax-rules ()
-    ((bind-lambda* pattern . body)
-     (match-lambda* (pattern . body)))))
-
 (define (celestial->cartesian/left ra dec distance)
   (let ((theta (* tau (/ ra 24.0)))
         (phi (* tau (/ (+ (- dec) 90) 360.0))))
