@@ -45,14 +45,12 @@ exec csi -s $0 "$@"
 
 (define tau 6.283185307179586)
 
-(define (vlaheader-title title constellation)
+(define (format-title title constellation)
   (define (substitute x)
     (if (eq? 'iau x) constellation x))
-  (cat "set comment "
-       (if (pair? title)
-           (apply-cat (map substitute title))
-           (substitute title))
-       nl))
+  (if (pair? title)
+      (apply-cat (map substitute title))
+      (substitute title)))
 
 (define (vlaheader options)
   (let ((constellation (alist-ref 'constellation options))
@@ -60,7 +58,9 @@ exec csi -s $0 "$@"
         (author (alist-ref 'author options))
         (site (alist-ref 'site options)))
     (fmt #t
-         (if title (vlaheader-title title constellation) fmt-null)
+         (if title
+             (cat "set comment " (format-title title constellation) nl)
+             fmt-null)
          (if author (cat "set author " author nl) fmt-null)
          (if site (cat "set site " site nl) fmt-null)
          "set filetype NEW" nl
@@ -119,6 +119,9 @@ exec csi -s $0 "$@"
 
 (define (main/obj options)
   (let* ((constellation (alist-ref 'constellation options))
+         (title (alist-ref 'title options))
+         (author (alist-ref 'author options))
+         (site (alist-ref 'site options))
          (boundary (read-boundary constellation))
          (nboundary-verts (length boundary))
          (rings 3)
@@ -131,6 +134,10 @@ exec csi -s $0 "$@"
                          ((ra dec) (celestial->cartesian/right ra dec distance)))
                        boundary))
                     (iota rings 1.0 step))))
+    (fmt #t
+         (if title (cat "# " (format-title title constellation) nl) fmt-null)
+         (if author (cat "# " author nl) fmt-null)
+         (if site (cat "# " site nl) fmt-null))
     (for-each
      (match-lambda
        ((x y z) (fmt #t "v " x " " y " " z nl)))
