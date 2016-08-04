@@ -45,34 +45,32 @@ exec csi -s $0 "$@"
 
 (define tau 6.283185307179586)
 
-(define title (make-parameter "3D constellation boundary"))
 (define constellation-abr (make-parameter #f))
-(define author (make-parameter #f))
-(define site (make-parameter #f))
-(define coordsys (make-parameter 'RIGHT))
-(define depthcue (make-parameter 2))
 
-(define (vlaheader-title)
-  (if (or (title) (constellation-abr))
-      (cat "set comment "
-           (fmt-join dsp
-                     (filter identity (list (title) (constellation-abr)))
-                     " - ")
-           nl)
-      ""))
+(define (vlaheader-title title)
+  (define (substitute x)
+    (if (eq? 'iau x) (constellation-abr) x))
+  (cat "set comment "
+       (if (pair? title)
+           (apply-cat (map substitute title))
+           (substitute title))
+       nl))
 
-(define (vlaheader)
-  (fmt #t
-       (vlaheader-title)
-       "set author " (author) nl
-       "set site " (site) nl
-       "set filetype NEW" nl
-       "set coordsys " (coordsys) nl
-       "set defaultdraw STELLAR" nl
-       "set filecontent LINES" nl
-       "set parametric NON_PARAMETRIC" nl
-       "set depthcue " (depthcue) nl
-       "set library_id UNKNOWN" nl))
+(define (vlaheader options)
+  (let ((title (alist-ref 'title options))
+        (author (alist-ref 'author options))
+        (site (alist-ref 'site options)))
+    (fmt #t
+         (if title (vlaheader-title title) fmt-null)
+         (if author (cat "set author " author nl) fmt-null)
+         (if site (cat "set site " site nl) fmt-null)
+         "set filetype NEW" nl
+         "set coordsys " (alist-ref 'vla-coordsys options) nl
+         "set defaultdraw STELLAR" nl
+         "set filecontent LINES" nl
+         "set parametric NON_PARAMETRIC" nl
+         "set depthcue " (alist-ref 'vla-depthcue options) nl
+         "set library_id UNKNOWN" nl)))
 
 (define-syntax bind-lambda
   (syntax-rules ()
@@ -84,19 +82,21 @@ exec csi -s $0 "$@"
     ((bind-lambda* pattern . body)
      (match-lambda* (pattern . body)))))
 
-(define (celestial->cartesian ra dec distance)
+(define (celestial->cartesian/left ra dec distance)
   (let ((theta (* tau (/ ra 24.0)))
         (phi (* tau (/ (+ (- dec) 90) 360.0))))
-    (if (eq? 'RIGHT (coordsys))
-        (list
-         (* distance (cos theta) (sin phi))
-         (* distance (sin theta) (sin phi))
-         (* distance (cos phi)))
-        (let ((distance (* 9.4607304725808e15 distance)))
-          (list
-           (* distance (cos theta) (sin phi))
-           (* distance (cos phi))
-           (* distance (sin theta) (sin phi)))))))
+    (list
+     (* distance (cos theta) (sin phi))
+     (* distance (cos phi))
+     (* distance (sin theta) (sin phi)))))
+
+(define (celestial->cartesian/right ra dec distance)
+  (let ((theta (* tau (/ ra 24.0)))
+        (phi (* tau (/ (+ (- dec) 90) 360.0))))
+    (list
+     (* distance (cos theta) (sin phi))
+     (* distance (sin theta) (sin phi))
+     (* distance (cos phi)))))
 
 (define (read-boundary constellation)
   (define (parse-line line)
@@ -126,7 +126,7 @@ exec csi -s $0 "$@"
 (define (close-loop coords)
   (append coords (list (first coords))))
 
-(define (main/obj constellation)
+(define (main/obj constellation options)
   (let* ((boundary (read-boundary constellation))
          (nboundary-verts (length boundary))
          (rings 3)
@@ -136,7 +136,7 @@ exec csi -s $0 "$@"
                     (lambda (distance)
                       (map
                        (match-lambda
-                         ((ra dec) (celestial->cartesian ra dec distance)))
+                         ((ra dec) (celestial->cartesian/right ra dec distance)))
                        boundary))
                     (iota rings 1.0 step))))
     (for-each
@@ -158,20 +158,27 @@ exec csi -s $0 "$@"
                       (+ first (+ i nboundary-verts))
                       (+ first (modulo (+ 1 i) nboundary-verts) nboundary-verts)))))))
 
-(define (main/vla constellation)
-  (let ((boundary (close-loop (read-boundary constellation))))
-    (vlaheader)
+(define (main/vla constellation options)
+  (let* ((boundary (close-loop (read-boundary constellation)))
+         (coordsys (alist-ref 'vla-coordsys options))
+         (celestial->cartesian (if (eq? 'left coordsys)
+                                   celestial->cartesian/left
+                                   celestial->cartesian/right)))
+    (vlaheader options)
     (let loop-distance ((count 0)
                         (prev-distance #f)
                         (distance 1.0))
-      (for-each
-       (match-lambda*
-         (((ra dec) draw-command)
-          (fmt #t draw-command " "
-               (fmt-join dsp (celestial->cartesian ra dec distance) " ")
-               " 1.0" nl)))
-       boundary
-       (cons 'P (circular-list 'L)))
+      (let ((distance (if (eq? 'left coordsys)
+                          (* 9.4607304725808e15 distance)
+                          distance)))
+        (for-each
+         (match-lambda*
+           (((ra dec) draw-command)
+            (fmt #t draw-command " "
+                 (fmt-join dsp (celestial->cartesian ra dec distance) " ")
+                 " 1.0" nl)))
+         boundary
+         (cons 'P (circular-list 'L))))
       (when (< count 9)
         (loop-distance (+ 1 count) distance (* 2 distance))))))
 
@@ -183,6 +190,7 @@ exec csi -s $0 "$@"
           " const: IAU abbreviation of a constellation (ori)" nl nl
           (args:usage opts) nl)
      (exit 1))
+
    (args:make-option (f format) #:required
                      (string-append "output format ("
                                     (fmt #f (fmt-join dsp output-formats ", "))
@@ -191,7 +199,10 @@ exec csi -s $0 "$@"
        (unless (memq format output-formats)
          (fmt #t "Unsupported output format: " format nl)
          (exit 1))
-       (set! arg format)))))
+       (set! arg format)))
+
+   (args:make-option (o options-file) #:required
+                     "load additional options alist from file")))
 
 (call-with-values
     (lambda () (args:parse (command-line-arguments) opts))
@@ -200,16 +211,21 @@ exec csi -s $0 "$@"
      (fmt #t "Constellation must be specified" nl)
      (exit 1))
     ((options (constellation))
-     (let ((constellation (string->symbol (string-upcase constellation))))
-       (author "John Foerch")
-       (site "Roger B. Chaffee Planetarium")
+     (let* ((constellation (string->symbol (string-upcase constellation)))
+            (options-file (alist-ref 'options-file options))
+            (options (append
+                      options
+                      (if options-file
+                         (append options
+                                 (with-input-from-file options-file read))
+                         '())
+                      '((title . ("3D constellation boundary - " iau))
+                        (vla-coordsys . right)
+                        (vla-depthcue . 2)))))
        (constellation-abr constellation)
-       (coordsys 'RIGHT)
-       ;; title
-       ;; depthcue
        (case (or (alist-ref 'format options) 'VLA)
-         ((VLA) (main/vla constellation))
-         ((OBJ) (main/obj constellation)))))
+         ((VLA) (main/vla constellation options))
+         ((OBJ) (main/obj constellation options)))))
     ((options (constellation . rest))
      (fmt #t "Too many operands" nl)
      (exit 1))))
