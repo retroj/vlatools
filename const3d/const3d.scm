@@ -64,7 +64,9 @@ exec csi -s $0 "$@"
          (if author (cat "set author " author nl) fmt-null)
          (if site (cat "set site " site nl) fmt-null)
          "set filetype NEW" nl
-         "set coordsys " (alist-ref 'vla-coordsys options) nl
+         "set coordsys " (string-upcase
+                          (symbol->string
+                           (alist-ref 'vla-coordsys options))) nl
          "set defaultdraw STELLAR" nl
          "set filecontent LINES" nl
          "set parametric NON_PARAMETRIC" nl
@@ -193,7 +195,11 @@ exec csi -s $0 "$@"
        (set! arg format)))
 
    (args:make-option (o options-file) #:required
-                     "load additional options alist from file")))
+                     "load additional options alist from file")
+
+   (args:make-option (vla-coordsys) #:required
+                     "coordinate system for VLA output (left, right)"
+     (set! arg (string->symbol (string-downcase arg))))))
 
 (call-with-values
     (lambda () (args:parse (command-line-arguments) opts))
