@@ -39,7 +39,7 @@ exec csi -s $0 "$@"
      matchable
      (only miscmacros dotimes))
 
-(define boundaries-filename "bound_in_20.txt")
+(define boundaries-filename "data/constellations/bound_in_20.txt")
 
 (define output-formats '(OBJ VLA))
 
