@@ -43,7 +43,7 @@ exec csi -s $0 "$@"
 
 (define output-formats '(OBJ VLA))
 
-(define tau 6.283185307179586)
+(define tau (* 4 (asin 1.0)))
 
 (define (format-title title constellation)
   (define (substitute x)
