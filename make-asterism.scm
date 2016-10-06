@@ -36,7 +36,6 @@ exec csi -s "$0" "$@"
      data-structures
      extras
      fmt
-     linear-algebra
      list-utils
      matchable
      (only miscmacros inc!)
@@ -72,7 +71,7 @@ exec csi -s "$0" "$@"
 ;; Utils
 ;;
 
-(define tau (* 2 pi))
+(define tau (* 4.0 (asin 1.0)))
 
 (define rest cdr)
 
