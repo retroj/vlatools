@@ -51,9 +51,9 @@ exec csi -s $0 "$@"
 
 (define (latlon->cartesian3 lat lon)
   (let ((r 6371000))
-    (list (* r (cos lat) (cos lon))
-          (* r (sin lat))
-          (* r (cos lat) (sin lon)))))
+    (list (* r (cos lon) (cos lat))
+          (* r (sin lon) (cos lat))
+          (* r (sin lat)))))
 
 
 ;;
@@ -164,9 +164,8 @@ exec csi -s $0 "$@"
      (lambda (field)
        (for-each
         (lambda (record draw-command)
-          (fmt #t draw-command " "
-               (fmt-join wrt (apply latlon->cartesian3 (field record)) ", ")
-               ", 1.0" nl))
+          (match-let (((x y z) (apply latlon->cartesian3 (field record))))
+            (fmt #t draw-command " " (fmt-join wrt (list x z y 1.0) ", ") nl)))
         data
         (cons 'P (circular-list 'L))))
      (alist-ref path `((center ,fourth)
@@ -185,10 +184,9 @@ exec csi -s $0 "$@"
     (for-each
      (lambda (record)
        (let ((d (* 10 (- (first record) jd))))
-         (match-let (((x z y) (apply latlon->cartesian3 (fourth record))))
-           (fmt #t "Node Data," (first record) ","
-                (fmt-join wrt (list x y z) ",")
-                ",0,0,0" nl))))
+         (fmt #t "Node Data," (first record) ","
+              (fmt-join wrt (apply latlon->cartesian3 (fourth record)) ",")
+              ",0,0,0" nl)))
      data)))
 
 
