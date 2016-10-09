@@ -81,8 +81,6 @@ exec csi -s $0 "$@"
 ;; Parse Path File
 ;;
 
-(define jd 2457986.5)
-
 (define (as-number parser)
   (bind (as-string parser)
       (o result string->number)))
@@ -103,7 +101,7 @@ exec csi -s $0 "$@"
   (sequence* ((h whole-number)
               (_ (is #\:))
               (m whole-number))
-    (result (+ jd (/ (+ h (/ m 60.0)) 24.0)))))
+    (result (/ (+ h (/ m 60.0)) 24.0))))
 
 (define latitude-longitude
   (sequence* ((latdeg whole-number)
@@ -126,7 +124,7 @@ exec csi -s $0 "$@"
     (_ (is #\s)))
    (result (+ (* 60 m) s))))
 
-(define record
+(define (record jd)
   (sequence* ((_ ws*) (time time)
               (_ ws+) (northern-limit latitude-longitude)
               (_ ws+) (southern-limit latitude-longitude)
@@ -136,7 +134,7 @@ exec csi -s $0 "$@"
               (_ ws+) (sun-azm whole-number)
               (_ ws+) (path-width-km whole-number)
               (_ ws+) (duration duration))
-    (result (list time northern-limit southern-limit
+    (result (list (+ jd time) northern-limit southern-limit
                   central-line m-s-diam-ratio sun-alt
                   sun-azm path-width-km duration))))
 
@@ -144,13 +142,18 @@ exec csi -s $0 "$@"
   (bind (zero-or-more (in (char-set-union char-set:graphic char-set:blank)))
       (lambda _ (result #f))))
 
-(define eclipse-path
-  (separated-by (any-of record ignored-line) eol))
+(define (eclipse-path jd)
+  (separated-by (any-of (record jd) ignored-line) eol))
 
-(define (parse-file)
-  (receive (result remainder)
-      (parse eclipse-path (current-input-port))
-    (filter identity result)))
+(define (load-catalog options)
+  (let ((path-file (alist-ref 'path-file options)))
+    (filter
+     identity
+     (with-input-from-file path-file
+       (lambda ()
+         (receive (result remainder)
+             (parse (eclipse-path 2457986.5) (current-input-port))
+           (filter identity result)))))))
 
 
 ;;
@@ -183,10 +186,9 @@ exec csi -s $0 "$@"
          ",Time,X,Y,Z,H,P,R" nl)
     (for-each
      (lambda (record)
-       (let ((d (* 10 (- (first record) jd))))
-         (fmt #t "Node Data," (first record) ","
-              (fmt-join wrt (apply latlon->cartesian3 (fourth record)) ",")
-              ",0,0,0" nl)))
+       (fmt #t "Node Data," (first record) ","
+            (fmt-join wrt (apply latlon->cartesian3 (fourth record)) ",")
+            ",0,0,0" nl))
      data)))
 
 
@@ -248,7 +250,7 @@ exec csi -s $0 "$@"
        (unless (member path '(center limits both))
          (fmt #t "path must be one of center, limits, or both" nl)
          (exit 1))
-       (let ((data (filter identity (with-input-from-file path-file parse-file))))
+       (let ((data (load-catalog options)))
          (case output
            ((vla) (output-vla options data))
            ((dspath) (output-dspath options data))))))
