@@ -52,8 +52,8 @@ exec csi -s $0 "$@"
 (define (latlon->cartesian3 lat lon)
   (let ((r 6371000))
     (list (* r (cos lat) (cos lon))
-          (* r (cos lat) (sin lon))
-          (* r (sin lat)))))
+          (* r (sin lat))
+          (* r (cos lat) (sin lon)))))
 
 
 ;;
@@ -154,6 +154,45 @@ exec csi -s $0 "$@"
 
 
 ;;
+;; Output
+;;
+
+(define (output-vla options data)
+  (let ((path (alist-ref 'path options)))
+    (vlaheader options)
+    (for-each
+     (lambda (field)
+       (for-each
+        (lambda (record draw-command)
+          (fmt #t draw-command " "
+               (fmt-join wrt (apply latlon->cartesian3 (field record)) ", ")
+               ", 1.0" nl))
+        data
+        (cons 'P (circular-list 'L))))
+     (alist-ref path `((center ,fourth)
+                       (limits ,second ,third)
+                       (both ,second ,third ,fourth))))))
+
+(define (output-dspath options data)
+  (let ((path (alist-ref 'path options)))
+    (fmt #t "Ds," (or (alist-ref 'title options) "Eclipse Path")
+         ",Earth-Centered,,,,," nl
+         "Face,FALSE,(TRUE or FALSE),,,,," nl
+         "Date,TRUE,(TRUE or FALSE),,,,," nl
+         "XYZHPR,0x38,(BITMASK),,,,," nl
+         "Segments,SMOOTH,(SMOOTH or STRAIGHT),,,,," nl
+         ",Time,X,Y,Z,H,P,R" nl)
+    (for-each
+     (lambda (record)
+       (let ((d (* 10 (- (first record) jd))))
+         (match-let (((x z y) (apply latlon->cartesian3 (fourth record))))
+           (fmt #t "Node Data," (first record) ","
+                (fmt-join wrt (list x y z) ",")
+                ",0,0,0" nl))))
+     data)))
+
+
+;;
 ;; Main
 ;;
 
@@ -180,10 +219,14 @@ exec csi -s $0 "$@"
      (set! arg (string->symbol (string-downcase arg))))
 
    (args:make-option
+       (output) #:required
+       "output format (vla*, dspath)"
+     (set! arg (string->symbol (string-downcase arg))))
+
+   (args:make-option
        (vla-depthcue) #:required
        "depthcue value for VLA output (0*, 1, 2)"
      (set! arg (string->number arg)))))
-
 
 (call-with-values
     (lambda () (args:parse (command-line-arguments) opts))
@@ -195,8 +238,10 @@ exec csi -s $0 "$@"
                       (if options-file
                           (with-input-from-file options-file read)
                           '())
-                      '((path . center)
+                      '((output . vla)
+                        (path . center)
                         (vla-depthcue . 0))))
+            (output (alist-ref 'output options))
             (path-file (alist-ref 'path-file options))
             (path (alist-ref 'path options)))
        (unless path-file
@@ -206,19 +251,9 @@ exec csi -s $0 "$@"
          (fmt #t "path must be one of center, limits, or both" nl)
          (exit 1))
        (let ((data (filter identity (with-input-from-file path-file parse-file))))
-         (vlaheader options)
-         (for-each
-          (lambda (field)
-            (for-each
-             (lambda (record draw-command)
-               (fmt #t draw-command " "
-                    (fmt-join wrt (apply latlon->cartesian3 (field record)) ", ")
-                    ", 1.0" nl))
-             data
-             (cons 'P (circular-list 'L))))
-          (alist-ref path `((center ,fourth)
-                            (limits ,second ,third)
-                            (both ,second ,third ,fourth)))))))
+         (case output
+           ((vla) (output-vla options data))
+           ((dspath) (output-dspath options data))))))
     ((options operands)
      (fmt #t "Too many operands" nl)
      (exit 1))))
