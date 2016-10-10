@@ -85,9 +85,9 @@ exec csi -s $0 "$@"
   (bind (as-string parser)
       (o result string->number)))
 
-(define ws* (zero-or-more (in char-set:blank)))
+(define blank* (zero-or-more (in char-set:blank)))
 
-(define ws+ (one-or-more (in char-set:blank)))
+(define blank+ (one-or-more (in char-set:blank)))
 
 (define eol (in (string->char-set "\n")))
 
@@ -105,10 +105,10 @@ exec csi -s $0 "$@"
 
 (define latitude-longitude
   (sequence* ((latdeg whole-number)
-              (latdec (preceded-by ws+ decimal-number))
+              (latdec (preceded-by blank+ decimal-number))
               (latsign (in (string->char-set "NS")))
-              (londeg (preceded-by ws+ whole-number))
-              (londec (preceded-by ws+ decimal-number))
+              (londeg (preceded-by blank+ whole-number))
+              (londec (preceded-by blank+ decimal-number))
               (lonsign (in (string->char-set "EW"))))
     (result
      (list (degrees->radians (* (if (eqv? latsign #\N) 1 -1)
@@ -125,15 +125,15 @@ exec csi -s $0 "$@"
    (result (+ (* 60 m) s))))
 
 (define (record jd)
-  (sequence* ((_ ws*) (time time)
-              (_ ws+) (northern-limit latitude-longitude)
-              (_ ws+) (southern-limit latitude-longitude)
-              (_ ws+) (central-line latitude-longitude)
-              (_ ws+) (m-s-diam-ratio decimal-number)
-              (_ ws+) (sun-alt whole-number)
-              (_ ws+) (sun-azm whole-number)
-              (_ ws+) (path-width-km whole-number)
-              (_ ws+) (duration duration))
+  (sequence* ((_ blank*) (time time)
+              (_ blank+) (northern-limit latitude-longitude)
+              (_ blank+) (southern-limit latitude-longitude)
+              (_ blank+) (central-line latitude-longitude)
+              (_ blank+) (m-s-diam-ratio decimal-number)
+              (_ blank+) (sun-alt whole-number)
+              (_ blank+) (sun-azm whole-number)
+              (_ blank+) (path-width-km whole-number)
+              (_ blank+) (duration duration))
     (result (list (+ jd time) northern-limit southern-limit
                   central-line m-s-diam-ratio sun-alt
                   sun-azm path-width-km duration))))
