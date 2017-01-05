@@ -138,6 +138,43 @@ exec csi -s $0 "$@"
                   central-line m-s-diam-ratio sun-alt
                   sun-azm path-width-km duration))))
 
+
+;; we need a parser and an interface to get values by name from parsed
+;; results.
+'(define-record-type :ad-hoc-text-catalog
+  (make-ad-hoc-text-catalog parser ref)
+  ad-hoc-text-catalog?
+  (parser ad-hoc-text-catalog-parser)
+  (ref ad-hoc-text-catalog-ref))
+
+'(ad-hoc-text
+  leading: blank*
+  separator: blank+
+  strict: #f
+  fields: `((time ,time)
+            (northern-limit ,latitude-longitude)
+            (southern-limit ,latitude-longitude)
+            (central-line ,latitude-longitude)
+            (m-s-diam-ratio ,decimal-number)
+            (sun-alt ,whole-number)
+            (sun-azm ,whole-number)
+            (path-width-km ,whole-number)
+            (duration ,duration)))
+
+;; so given this ad-hoc catalog as defined above, what do the options look
+;; like that use it?  It's pretty clear that catalogs need to be defined
+;; as modules in some kind of plugin system, if we don't want to introduce
+;; evaluation into the options system.  Unless we allow all of these
+;; parsers to be named by symbol, which could work.  The ad hoc catalog
+;; module would provide the parsers that it knows about.
+;;
+;; how general is this ad-hoc catalog system, really?
+;;
+;; how do we know that this catalog defines a series of events pertaining
+;; to a single object?
+;;
+
+
 (define ignored-line
   (bind (zero-or-more (in (char-set-union char-set:graphic char-set:blank)))
       (lambda _ (result #f))))

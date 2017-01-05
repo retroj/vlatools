@@ -120,7 +120,7 @@ exec csi -s "$0" "$@"
     (zip
      hyg-database-field-converters
      (string-split
-      (first
+      (first ;;XXX: if no lines were found, this gives an error (car)
        (let ((des (->string designator)))
          (or
           (cond
