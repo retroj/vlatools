@@ -31,6 +31,10 @@ program does not yet produce VLA output, but another Digistar-specific
 format used for asterism stick figures.  A VLA output option is intended
 later.
 
+## shpvla (php, BSD)
+
+Shpvla converts ESRI Shapefiles to VLA.
+
 ## svgvla (chicken-scheme, BSD)
 
 Svgvla is a tool for converting a small subset of SVG to VLA.

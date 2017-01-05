@@ -1,0 +1,57 @@
+
+* shpvla
+
+Shpvla is a program to convert ESRI Shapefiles to VLA models.
+Specifically, it creates spherical models based on geographic information
+from shapefiles.  It is nice for making things like wireframe globes or
+outlines of features of interest for overlaying on the Earth.  It is
+written in PHP.  Sorry.
+
+** Supported ESRI Shapefile Types
+
+ - [X] Polygon
+ - [X] Polyline
+
+** Invocation
+
+: $ shpvla.php a-shapefile.shp
+
+A shapefile is actually 3 files - an SHP, an SHX, and a DBF.  All three
+must be present.
+
+** Output
+
+Shpvla outputs the data part of a VLA, in meters format.  The model radius
+is 1 meter, so to make an overlay on the Earth in Digistar, scale the
+model by slightly more than 1 rEarth.
+
+** Selecting Individual Features
+
+I didn't add this to the command line interface yet, but it's simple to
+modify shpvla.php to limit the selection of which features to draw.  Find
+the code:
+
+    : $shape = new geoformat_shapefile(
+    :     array('file' => $argv[$i]));
+
+Add a 'draw' regexp to match the shapes you want.  Shapes are named in the
+DBF file.  This is an example from a model I made of the outlines of the
+states in the August 2017 solar eclipse path.
+
+    : $shape = new geoformat_shapefile(
+    :     array('file' => $argv[$i],
+    :           'draw' => '/^oregon|idaho|wyoming|nebraska|kansas|missouri'.
+    :                     '|illinois|kentucky|tennessee|north carolina'.
+    :                     '|south carolina|georgia/i'));
+
+** Where to Get Shapefiles
+
+ - [[http://www.naturalearthdata.com/][Natural Earth]]
+ - USGS
+
+** History
+
+This program is based on a PHP mapmaking program that I wrote in 2004,
+JJFMapper.  When I needed a nice wireframe earth model for Digistar, I
+remembered that old program, ripped its guts out, and made it produce
+VLA instead of images.  I hope it can be of use to others.

@@ -1,0 +1,10 @@
+set author Author
+set site Site
+set comment Globe
+set filetype NEW
+set coordsys LEFT
+set defaultdraw STELLAR
+set filecontent LINES
+set parametric NON_PARAMETRIC
+set depthcue 0
+set library_id UNKNOWN
