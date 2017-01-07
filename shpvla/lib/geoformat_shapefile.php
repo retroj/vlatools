@@ -354,22 +354,23 @@ class geoformat_shapefile {
 
     function parse_polyline (&$records) {
         foreach ($records as $record_k => $record_v) {
+            // parse polyline shape header ($a)
+            //
             $mlrec = $this->get_shp_content($record_k + 8, 44);
             $p = 'Vtype/d4bounds/Vnparts/Vnpoints';
             $a = unpack_workaround($p, $mlrec);
+
+            // parse parts and points ($b)
+            //
             $datasize = $a['nparts'] * 4 + $a['npoints'] * 16;
             $p = 'V'.$a['nparts'].'r/d'.($a['npoints']*2).'n';
             $mlrec = $this->get_shp_content($record_k + 52, $datasize);
             $b = unpack_workaround($p, $mlrec);
             $points_begin_idx = $record_k + 52 + $a['nparts'] * 4;
 
-            // the shapefile spec says "Parts may or may not be connected to
-            // one another."  I interpret this to mean they should not be
-            // drawn connected.  If the author of the file intended the parts
-            // to be connected, he could do so by making the end point of the
-            // last part the same as the start point of the next one.
-            // Otherwise, why make them separate parts?
-
+            if ($a['nparts'] > 1) {
+                $next_part_index = $b['n2'];
+            }
             $curpart = 1;
             $command = 'P';
             for ($i = 1; $i <= $a['npoints']; ++$i) {
@@ -388,9 +389,10 @@ class geoformat_shapefile {
                 //new point if this is the last point in the current part
                 $next_point_idx = $i * 16 + $points_begin_idx;
                 if ($curpart < $a['nparts'] &&
-                    $next_point_idx == $a['part'.($curpart+1)])
+                    $next_point_idx == $next_part_index)
                 {
                     $command = 'P';
+                    $next_part_index = $b['n'.($curpart + 2)];
                     ++$curpart;
                 }
             }
