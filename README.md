@@ -11,7 +11,7 @@ the source code.  Have fun and may the source be with you.
 
 ## blender-vla (python, GPL)
 
-A VLA import plugin for Blender.
+A Blender plugin for importing and exporting VLA models.
 
 ## const3d (chicken-scheme, BSD)
 
