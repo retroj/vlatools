@@ -19,15 +19,104 @@ bl_info = {
     "name": "Digistar VLA format",
     "author": "John J Foerch <jjfoerch@earthlink.net>",
     "blender": (2,6,9),
-    "version": (0,0,1),
+    "version": (1,0,0),
     "location": "File > Import-Export",
-    "description": "Import Digistar VLA models",
+    "description": "Import and Export Digistar VLA models",
     "category": "Import-Export"
 }
 
 import bpy
-from bpy.props import StringProperty, FloatProperty, BoolProperty, EnumProperty
+from bpy.props import *
 import os
+
+def export_load_options (self, context):
+    if not os.path.exists(self.header):
+        return None
+    props = {}
+    f = open(self.header, "r")
+    for line in f.readlines():
+        line_split = line.split(None, 2)
+        if len(line_split) == 0:
+            continue
+        kw = line_split[0].upper()
+        if kw == "SET":
+            key = line_split[1].upper()
+            val = line_split[2].strip()
+            if key == "COMMENT" and key in props:
+                ##XXX: it would be nicer to have an array of strings for
+                ##     comments, but I'm not sure how to do that in the
+                ##     blender plugin api.
+                props[k] = props[k] + "|" + val
+            else:
+                props[key] = val
+        else:
+            break
+    f.close()
+    if "COORDSYS" in props:
+        if props["COORDSYS"].upper() == "RIGHT":
+            self.units = "ly"
+        else:
+            self.units = "meters"
+    if "DEPTHCUE" in props:
+        self.depthcue = int(props["DEPTHCUE"])
+    if "AUTHOR" in props:
+        self.author = props["AUTHOR"]
+    if "SITE" in props:
+        self.site = props["SITE"]
+    if "COMMENT" in props:
+        self.comment = props["COMMENT"]
+    # if "FILECONTENT" in props:
+    #     if props["FILECONTENT"].upper() == "LINES":
+    #         export edges
+    #     else
+    #         export vertices
+    return None
+
+class VLAExporter (bpy.types.Operator):
+    """Save mesh as Digistar VLA file"""
+    bl_idname = "export_mesh.vla"
+    bl_label = "Export VLA"
+    bl_options = {"UNDO"}
+
+    filepath = StringProperty(subtype = "FILE_PATH")
+    filter_glob = StringProperty(default = "*.vla", options={"HIDDEN"})
+
+    ## option to export points instead of edges
+    # option_vertices = BoolProperty(name = "vertices",
+    #                                description = "save vertices instead of edges ",
+    #                                default = False)
+
+    ## option to animate between two keyframes
+
+    units = EnumProperty(
+        items = [("meters", "Meters", "Meters (implies COORDSYS LEFT)"),
+                 ("ly", "Light Years", "Light Years (implies COORDSYS RIGHT)")],
+        name = "Units",
+        description = "Units of coordinates in VLA",
+        default = "meters")
+
+    author = StringProperty(name = "Author")
+    site = StringProperty(name = "Site")
+    comment = StringProperty(name = "Comment")
+    depthcue = IntProperty(name = "Depthcue", min=0, max=2)
+
+    header = StringProperty(name = "Header",
+                            description = "Load export options from VLA file...",
+                            update = export_load_options)
+
+    ## load header into a set of options?
+
+    def execute (self, context):
+        from . import export_vla
+        keywords = self.as_keywords()
+        export_vla.write(**keywords)
+        return {"FINISHED"}
+
+    def invoke (self, context, event):
+        wm = context.window_manager
+        wm.fileselect_add(self)
+        return {"RUNNING_MODAL"}
+
 
 class VLAImporter (bpy.types.Operator):
     """Load Digistar VLA file data as a mesh"""
@@ -60,15 +149,20 @@ class VLAImporter (bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
 
+def menu_export (self, context):
+    self.layout.operator(VLAExporter.bl_idname, text="Digistar VLA (.vla)")
+
 def menu_import (self, context):
     self.layout.operator(VLAImporter.bl_idname, text="Digistar VLA (.vla)")
 
 def register ():
     bpy.utils.register_module(__name__)
+    bpy.types.INFO_MT_file_export.append(menu_export)
     bpy.types.INFO_MT_file_import.append(menu_import)
 
 def unregister ():
     bpy.utils.unregister_module(__name__)
+    bpy.types.INFO_MT_file_export.remove(menu_export)
     bpy.types.INFO_MT_file_import.remove(menu_import)
 
 if __name__ == "__main__":
