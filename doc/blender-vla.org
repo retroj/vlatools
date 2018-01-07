@@ -1,3 +1,4 @@
 
-Blender-vla is a VLA import plugin for Blender.  It still needs a lot of
-work, so if things don't work as you expect, hack the source.
+Blender-vla is a Blender plugin for importing and exporting VLA models.
+It still needs a lot of work, so if things don't work as you expect, hack
+the source.
