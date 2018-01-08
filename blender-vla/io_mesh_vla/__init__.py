@@ -40,15 +40,16 @@ def export_load_options (self, context):
             continue
         kw = line_split[0].upper()
         if kw == "SET":
-            key = line_split[1].upper()
-            val = line_split[2].strip()
-            if key == "COMMENT" and key in props:
-                ##XXX: it would be nicer to have an array of strings for
-                ##     comments, but I'm not sure how to do that in the
-                ##     blender plugin api.
-                props[k] = props[k] + "|" + val
-            else:
-                props[key] = val
+            if len(line_split) > 2:
+                key = line_split[1].upper()
+                val = line_split[2].strip()
+                if key == "COMMENT" and key in props:
+                    ##XXX: it would be nicer to have an array of strings for
+                    ##     comments, but I'm not sure how to do that in the
+                    ##     blender plugin api.
+                    props[k] = props[k] + "|" + val
+                else:
+                    props[key] = val
         else:
             break
     f.close()
