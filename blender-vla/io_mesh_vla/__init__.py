@@ -47,7 +47,7 @@ def export_load_options (self, context):
                     ##XXX: it would be nicer to have an array of strings for
                     ##     comments, but I'm not sure how to do that in the
                     ##     blender plugin api.
-                    props[k] = props[k] + "|" + val
+                    props[key] = props[key] + "|" + val
                 else:
                     props[key] = val
         else:
