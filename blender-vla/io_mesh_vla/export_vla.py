@@ -49,8 +49,12 @@ def chains_to_vertex_chains (chains, vertices):
         vertex_chains.append(vertex_chain)
     return vertex_chains
 
-def write (filepath=False, units="meters", author="", site="",
-           comment="", depthcue=0, **keywords):
+def write (filepath=False, subtype="lines", units="meters",
+           author="", site="", comment="", depthcue=0, **keywords):
+    if subtype == "lines":
+        linestype = True
+    else:
+        linestype = False
     if units == "meters":
         coordsysleft = True
     else:
@@ -64,7 +68,7 @@ def write (filepath=False, units="meters", author="", site="",
     f.write("set filetype NEW\n")
     f.write("set coordsys {}\n".format("LEFT" if coordsysleft else "RIGHT"))
     f.write("set defaultdraw STELLAR\n")
-    f.write("set filecontent LINES\n") ##TODO: implement vertices option
+    f.write("set filecontent {}\n".format(subtype.upper()))
     f.write("set parametric NON_PARAMETRIC\n") ##TODO: implement keyframe support
     f.write("set depthcue {}\n".format(depthcue))
     f.write("set library_id UNKNOWN\n")
@@ -74,14 +78,20 @@ def write (filepath=False, units="meters", author="", site="",
 
     ## geometry
     ##
-    chains = []
-    for obj in bpy.context.selected_objects:
-        vertices = dict(obj.data.vertices.items())
-        edges = [tuple(edge.vertices) for (_, edge) in obj.data.edges.items()]
-        chains.extend(chains_to_vertex_chains(make_chains(edges), vertices))
-    for chain in chains:
-        cmd = "P"
-        for (x, y, z) in chain:
-            f.write("{} {} {} {} 1.0\n".format(cmd, x, y, z))
-            cmd = "L"
+    if subtype == "lines":
+        for obj in bpy.context.selected_objects:
+            vertices = dict(obj.data.vertices.items())
+            edges = [tuple(edge.vertices) for (_, edge) in obj.data.edges.items()]
+            chains = chains_to_vertex_chains(make_chains(edges), vertices)
+            for chain in chains:
+                cmd = "P"
+                for (x, y, z) in chain:
+                    f.write("{} {} {} {} 1.0\n".format(cmd, x, y, z))
+                    cmd = "L"
+    else:
+        for obj in bpy.context.selected_objects:
+            vertices = obj.data.vertices.items()
+            for (_, v) in vertices:
+                (x, y, z) = v.co
+                f.write("D {} {} {} 1.0\n".format(x, y, z))
     f.close()

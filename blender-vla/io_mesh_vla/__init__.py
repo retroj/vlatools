@@ -52,6 +52,8 @@ def export_load_options (self, context):
         else:
             break
     f.close()
+    if "FILECONTENT" in props:
+        self.subtype = props["FILECONTENT"].lower()
     if "COORDSYS" in props:
         if props["COORDSYS"].upper() == "RIGHT":
             self.units = "ly"
@@ -65,11 +67,6 @@ def export_load_options (self, context):
         self.site = props["SITE"]
     if "COMMENT" in props:
         self.comment = props["COMMENT"]
-    # if "FILECONTENT" in props:
-    #     if props["FILECONTENT"].upper() == "LINES":
-    #         export edges
-    #     else
-    #         export vertices
     return None
 
 class VLAExporter (bpy.types.Operator):
@@ -81,20 +78,18 @@ class VLAExporter (bpy.types.Operator):
     filepath = StringProperty(subtype = "FILE_PATH")
     filter_glob = StringProperty(default = "*.vla", options={"HIDDEN"})
 
-    ## option to export points instead of edges
-    # option_vertices = BoolProperty(name = "vertices",
-    #                                description = "save vertices instead of edges ",
-    #                                default = False)
-
-    ## option to animate between two keyframes
-
+    subtype = EnumProperty(
+        items = [("dots", "Dots", "Export vertices"),
+                 ("lines", "Lines", "Export edges")],
+        name = "Subtype",
+        description = "VLA subtype (dots or lines)",
+        default = "lines")
     units = EnumProperty(
         items = [("meters", "Meters", "Meters (implies COORDSYS LEFT)"),
                  ("ly", "Light Years", "Light Years (implies COORDSYS RIGHT)")],
         name = "Units",
         description = "Units of coordinates in VLA",
         default = "meters")
-
     author = StringProperty(name = "Author")
     site = StringProperty(name = "Site")
     comment = StringProperty(name = "Comment")
@@ -103,8 +98,6 @@ class VLAExporter (bpy.types.Operator):
     header = StringProperty(name = "Header",
                             description = "Load export options from VLA file...",
                             update = export_load_options)
-
-    ## load header into a set of options?
 
     def execute (self, context):
         from . import export_vla
