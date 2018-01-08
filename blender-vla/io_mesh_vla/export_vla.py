@@ -50,7 +50,7 @@ def chains_to_vertex_chains (chains, vertices):
     return vertex_chains
 
 def write (filepath=False, subtype="lines", units="meters",
-           author="", site="", comment="", depthcue=0, **keywords):
+           author="", site="", comment="", depthcue="0", **keywords):
     if subtype == "lines":
         linestype = True
     else:

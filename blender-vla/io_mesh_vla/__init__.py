@@ -60,7 +60,7 @@ def export_load_options (self, context):
         else:
             self.units = "meters"
     if "DEPTHCUE" in props:
-        self.depthcue = int(props["DEPTHCUE"])
+        self.depthcue = props["DEPTHCUE"]
     if "AUTHOR" in props:
         self.author = props["AUTHOR"]
     if "SITE" in props:
@@ -93,7 +93,13 @@ class VLAExporter (bpy.types.Operator):
     author = StringProperty(name = "Author")
     site = StringProperty(name = "Site")
     comment = StringProperty(name = "Comment")
-    depthcue = IntProperty(name = "Depthcue", min=0, max=2)
+    depthcue = EnumProperty(
+        items = [("0", "Not depth-cued", ""),
+                 ("1", "1 / distance", ""),
+                 ("2", "1 / distance squared", "")],
+        name = "Depthcue",
+        description = "",
+        default = "0")
 
     header = StringProperty(name = "Header",
                             description = "Load export options from VLA file...",
