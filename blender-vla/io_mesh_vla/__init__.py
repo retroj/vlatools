@@ -19,7 +19,7 @@ bl_info = {
     "name": "Digistar VLA format",
     "author": "John J Foerch <jjfoerch@earthlink.net>",
     "blender": (2,6,9),
-    "version": (1,1,0),
+    "version": (1,1,1),
     "location": "File > Import-Export",
     "description": "Import and Export Digistar VLA models",
     "category": "Import-Export"
