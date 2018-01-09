@@ -29,7 +29,7 @@ import bpy
 from bpy.props import *
 import os
 
-def export_load_options (self, context):
+def vlaexporter_load_options (self, context):
     if not os.path.exists(self.header):
         return None
     props = {}
@@ -104,7 +104,7 @@ class VLAExporter (bpy.types.Operator):
 
     header = StringProperty(name = "Header",
                             description = "Load export options from VLA file...",
-                            update = export_load_options)
+                            update = vlaexporter_load_options)
 
     def execute (self, context):
         from . import export_vla
