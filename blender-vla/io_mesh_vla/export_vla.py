@@ -63,8 +63,10 @@ def write (filepath=False, subtype="lines", units="meters",
 
     ## header
     ##
-    f.write("set author {}\n".format(author))
-    f.write("set site {}\n".format(site))
+    if author:
+        f.write("set author {}\n".format(author))
+    if site:
+        f.write("set site {}\n".format(site))
     f.write("set filetype NEW\n")
     f.write("set coordsys {}\n".format("LEFT" if coordsysleft else "RIGHT"))
     f.write("set defaultdraw STELLAR\n")
@@ -74,7 +76,8 @@ def write (filepath=False, subtype="lines", units="meters",
     f.write("set library_id UNKNOWN\n")
     comments = comment.split("|")
     for c in comments:
-        f.write("set comment {}\n".format(c))
+        if c:
+            f.write("set comment {}\n".format(c))
 
     ## geometry
     ##
