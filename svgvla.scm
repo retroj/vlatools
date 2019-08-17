@@ -54,6 +54,8 @@ exec csi -s $0 "$@"
     (terminate "Please supply a filename for svg input"))
   (when (> (length operands) 1)
     (terminate "Too many operands"))
+  (when (header-file)
+    (for-each print (read-lines (header-file))))
   (shapes->vla
    (apply-transformations
     (svg-sxml->shapes
