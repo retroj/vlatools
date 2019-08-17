@@ -42,3 +42,14 @@ Svgvla is a tool for converting a small subset of SVG to VLA.
 ## vlaview (chicken-scheme, BSD)
 
 Vlaview is a tool for viewing VLA models in an SDL display.
+
+## vla-transform/vla-flat-to-celestial.py (python, BSD)
+
+This program converts a flat VLA in X and Y coordinates to an offset VLA
+appropriate for use as a constellation art figure.
+
+The arguments are:
+
+ : vla-flat-to-celestial.py infile roll ra dec scalex scaley
+
+Angles are in radians.
