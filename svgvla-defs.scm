@@ -239,39 +239,63 @@
       (cdr shape)))
    shapes))
 
+(define (mins-and-maxes shapes)
+  (fold
+   (match-lambda*
+    ((shape (xmin xmax ymin ymax))
+     (receive (xs ys)
+         (unzip-alist shape)
+       (let ((ys (map car ys)))
+         (list (apply min xmin xs)
+               (apply max xmax xs)
+               (apply min ymin ys)
+               (apply max ymax ys))))))
+   (match (caar shapes) ((x y) (list x x y y)))
+   shapes))
+
 (define (apply-transformations shapes)
-  (match-let
-      (((xmin xmax ymin ymax)
-        (fold
-         (match-lambda*
-          ((shape (xmin xmax ymin ymax))
-           (receive (xs ys)
-               (unzip-alist shape)
-             (let ((ys (map car ys)))
-               (list (apply min xmin xs)
-                     (apply max xmax xs)
-                     (apply min ymin ys)
-                     (apply max ymax ys))))))
-         (match (caar shapes) ((x y) (list x x y y)))
-         shapes)))
-    (let ((transformations
-           (list
-            (list (center-drawing)
-                  (lambda (shapes)
-                    (let ((hoff (* 0.5 (+ xmin xmax)))
-                          (voff (* 0.5 (+ ymin ymax))))
-                      (map (lambda (shape)
-                             (map (match-lambda ((x y) (list (- x hoff) (- y voff))))
-                                  shape))
-                           shapes)))))))
-      (fold
-       (match-lambda*
-        (((test consequent) shapes)
-         (if test
-             (consequent shapes)
-             shapes)))
-       shapes
-       transformations))))
+  (let ((transformations
+         (list
+          (list (center-drawing)
+                (lambda (shapes)
+                  (match-let
+                   (((xmin xmax ymin ymax) (mins-and-maxes shapes)))
+                   (let ((hoff (* 0.5 (+ xmin xmax)))
+                         (voff (* 0.5 (+ ymin ymax))))
+                     (map (lambda (shape)
+                            (map (match-lambda ((x y) (list (- x hoff) (- y voff))))
+                                 shape))
+                          shapes)))))
+          (list (fit-wid)
+                (lambda (shapes)
+                  (match-let
+                   (((xmin xmax ymin ymax) (mins-and-maxes shapes)))
+                   (let* ((xrange (- xmax xmin))
+                          (yrange (- ymax ymin))
+                          (aspect (/ yrange xrange)))
+                     (map (lambda (shape)
+                            (map (match-lambda
+                                  ((x y)
+                                   (cond
+                                    ;;XXX: will it handle non-centered drawings correctly?
+                                    ((> aspect 1.0) ;; tall
+                                     (list (/ (+ (fit-ofx) (* (fit-wid) (/ (- x xmin) xrange)))
+                                              aspect)
+                                           (+ (fit-ofy) (* (fit-hei) (/ (- y ymin) yrange)))))
+                                    (else ;; square or wide
+                                     (list (+ (fit-ofx) (* (fit-wid) (/ (- x xmin) xrange)))
+                                           (* (+ (fit-ofy) (* (fit-hei) (/ (- y ymin) yrange)))
+                                              aspect))))))
+                                 shape))
+                          shapes))))))))
+    (fold
+     (match-lambda*
+      (((test consequent) shapes)
+       (if test
+           (consequent shapes)
+           shapes)))
+     shapes
+     transformations)))
 
 (define (terminate message #!optional (result 1))
   (with-output-to-port (current-error-port)
