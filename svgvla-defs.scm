@@ -175,6 +175,15 @@
     (define svg-rules
       `((*default* . ,(lambda (tag body) body))
         (*text* . ,(lambda (tag body) #f))
+        (http://www.w3.org/2000/svg:line
+         *preorder* . ,(match-lambda*
+                        ((tag (('@ . attrs) . body))
+                         (and-let* ((x1 (string->number (cadr (assoc 'x1 attrs))))
+                                    (x2 (string->number (cadr (assoc 'x2 attrs))))
+                                    (y1 (string->number (cadr (assoc 'y1 attrs))))
+                                    (y2 (string->number (cadr (assoc 'y2 attrs)))))
+                           (shape-add! `((,x1 ,y1) (,x2 ,y2)))))
+                        (x #f)))
         (http://www.w3.org/2000/svg:path
          *preorder* . ,(match-lambda*
                         ((tag (('@ . attrs) . body))
@@ -190,6 +199,13 @@
                          (and-let* ((r (assoc 'points attrs))
                                     (points (svg-break-polygon-points (cadr r))))
                            (shape-add! (cons (last points) points))))
+                        (x #f)))
+        (http://www.w3.org/2000/svg:polyline
+         *preorder* . ,(match-lambda*
+                        ((tag (('@ . attrs) . body))
+                         (and-let* ((r (assoc 'points attrs))
+                                    (points (svg-break-polygon-points (cadr r))))
+                           (shape-add! points)))
                         (x #f)))
         (http://www.w3.org/2000/svg:rect
          *preorder* . ,(match-lambda*
